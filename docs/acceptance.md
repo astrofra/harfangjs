@@ -1,12 +1,12 @@
-# C / W0 / W1 implementation evidence
+# C / W0 / W1 / W2 implementation evidence
 
 Implemented in `harfangjs` on 2026-10-04 against HARFANG checkout `5fe83f1adabf26294003be4c6e13ea068413b5d9`. The existing native tutorials and source repository are unchanged.
 
-This delivery provides the portable contract subset, executable browser foundations, and W1 static scenes/assets. **The complete shared-JS cross-host acceptance gate is still open:** the native QuickJS launcher/facade belongs to N. Native references use real C++ HARFANG, not native JavaScript. No unsupported feature or unported native tutorial is counted as passing.
+This delivery provides the portable contract subset, executable browser foundations, W1 static scenes/assets, and W2 materials/forward lighting. **The complete shared-JS cross-host acceptance gate is still open:** the native QuickJS launcher/facade belongs to N. Native references use real C++ HARFANG, not native JavaScript. No unsupported feature or unported native tutorial is counted as passing.
 
 ## Recorded validation
 
-`python tools/validate.py --native-render` builds `dist/web`, checks the offline writer, runs the browser suite at `/tests/`, drives real DOM input/lifecycle actions and compares native room renders. The recorded run passed **47 browser cases**, including 15 tutorial cases, **seven compiler cases**, and all browser integration checks. It used Chrome 154.0.8037.97 with WebGL 2 through ANGLE SwiftShader, plus native C++ HARFANG with bgfx OpenGL. Browser hardware GPUs, Firefox/WebKit/mobile and native QuickJS remain unvalidated.
+`python tools/validate.py --native-render` builds `dist/web`, checks the offline writer, runs the browser suite at `/tests/`, drives real DOM input/lifecycle actions and compares five native renders. The recorded run passed **66 browser cases**, including 20 tutorial cases, **ten compiler cases**, and all browser integration checks. It used Chrome 154.0.8037.97 with WebGL 2 through ANGLE SwiftShader, plus native C++ HARFANG with bgfx OpenGL. Browser hardware GPUs, Firefox/WebKit/mobile and native QuickJS remain unvalidated.
 
 The machine-readable result is generated at `build/reports/validation.json`; fixed-time captures are beside it. Generated reports/builds are ignored by git. The checked-in tutorial manifest is deliberately execution-neutral and retains native/browser statuses independently; each run's report is authoritative for that run.
 
@@ -54,7 +54,25 @@ The browser renders the same room as the native C++ forward pipeline using the f
 
 Compiler checks cover deterministic output, payload hashes, seam-preserving buffers/native winding, missing dependencies/material slots, output-directory protection, unsupported features, native compiled geometry rejection, and binary conversion. Browser checks add malformed indices/bounds/truncation, missing/corrupt images, integrity failure, transactional cancellation, unsupported features, texture orientation, and repeated scene disposal. Runtime network requests remain within the packaged modules, test fixtures and `assets-web`; source/native asset directories are never requested.
 
-The web asset package has 43 entries totaling 12,510,947 logical payload bytes, mostly the original PBR tutorial images preserved for structural dependency provenance. Structural rendering does not decode/sample those PBR images. Native/web asset tooling, ownership and limitations are detailed in [static assets](static-assets.md). The offline writer is a prototype frontend using native readers, not an upstream `assetc --target web` integration.
+The W1/W2 web asset package has 55 entries totaling 12,710,280 logical payload bytes, mostly the original PBR tutorial images. Structural rendering does not decode/sample those PBR images; the separate W2 material case does. Native/web asset tooling, ownership and limitations are detailed in [static assets](static-assets.md). The offline writer is a prototype frontend using native readers, not an upstream `assetc --target web` integration.
+
+## W2 results
+
+The gallery and tutorial gates use reviewed unlit, default/Phong, and HARFANG PBR adapters. Native comparisons use the same material values, geometry, tangent frames, light rig and camera. The PBR tutorial reference explicitly disables shadows/probes and uses RAW base-level bilinear texture sampling to match the declared W2 web profile. The original scene JSON remains byte-for-byte intact in the web output; its adaptation is separate manifest metadata. The native fixture exposes the PBR shader body's existing alpha-cut branch through its generated `.hps` descriptor. These comparisons do not claim the original full native environment/shadow/texture configuration.
+
+| Native/web comparison at 256×256 | RGB channel MAE / 255 | Pixels exceeding 16 in any RGB channel |
+| --- | --- | --- |
+| Material gallery | 0.636 | 1.83% |
+| Gallery with fog | 0.584 | 1.72% |
+| `scene_pbr.materials`, ambient/no shadows | 1.329 | 2.07% |
+
+All pass the W1 thresholds: MAE below 2/255 and fewer than 3% differing pixels. The gallery exercises roughness/metalness extremes, a negative and nonuniformly scaled normal-mapped panel, ORM channels, foliage alpha cut, a self map, emissive values, and overlapping transparency.
+
+Independent pixel tests verify map replacement, PBR base-map sRGB decoding, the native output gamma, AO's effect on direct lighting, metal diffuse suppression, self-map selection, exact .8 alpha-cut threshold, radius/cone attenuation, separate light intensities, fog, nine blend modes, nine depth states, culling orientations, RGBA/depth writes and transparent ordering. Native light arrays match within `1e-5`; the original 16-light motion/priority selection matches native slots at 48, 1048 and 2048 ms. Equal-priority overflow has a stable browser node-order policy.
+
+The one-second material texture toggle and 11×11 shared-model wave grid have separate named no-shadow derivatives. The original 10,201-node stress case remains pending W10. W2 cancellation/corrupt-map tests release partially loaded scene dependencies; scene reloads return mesh/image GPU counters to zero. Actual DOM tests exercise the gallery's lighting/fog/normal/roughness controls and restart it three times, checking final CPU/GPU/program cleanup.
+
+Forward program count stays at two, including repeated map/alpha-cut toggles; edits do not compile additional programs. The gallery records 12 draws, 7,692 triangles and 247,532 accounted GPU payload bytes. Per-case asset initialization, compile/link preparation and four completed frame timings are recorded in `validation.json` under `lightingStartup`, with backend, viewport and quality settings. Shader/driver overhead is outside the byte counter. See [the W2 contract](forward-materials.md) for defaults, approximation boundaries, ownership and source hashes.
 
 ## Native reference provenance
 

@@ -29,6 +29,12 @@ CreateCubeModel CreatePlaneModel VertexLayoutPosFloatNormUInt8 Picture.GetWidth 
 APPROXIMATE = set('''DrawLines LoadProgramFromFile Keyboard Mouse ReadKeyboard ReadMouse Keyboard.Down Keyboard.Pressed Keyboard.Released
 Mouse.X Mouse.Y Mouse.DtX Mouse.DtY Mouse.Wheel Mouse.Down Mouse.Pressed Mouse.Released'''.split())
 APPROXIMATE.update('''DrawModel LoadSceneFromAssets LoadSceneFromFile LoadPicture LoadTextureFromAssets Scene.CreateObject Object.GetMaterial Object.GetModelRef'''.split())
+SUPPORTED.update('''Light Light.IsValid Node.GetLight Node.SetLight Scene.CreateLight Scene.DestroyLight
+Light.GetType Light.SetType Light.GetDiffuseColor Light.SetDiffuseColor Light.GetSpecularColor Light.SetSpecularColor
+Light.GetDiffuseIntensity Light.SetDiffuseIntensity Light.GetSpecularIntensity Light.SetSpecularIntensity Light.GetRadius Light.SetRadius
+Light.GetInnerAngle Light.SetInnerAngle Light.GetOuterAngle Light.SetOuterAngle Light.GetPriority Light.SetPriority'''.split())
+APPROXIMATE.update('''Material SetMaterialValue SetMaterialTexture GetMaterialTexture UpdateMaterialPipelineProgramVariant
+SetMaterialBlendMode SetMaterialDepthTest SetMaterialFaceCulling SetMaterialWriteZ SetMaterialWriteRGBA SetMaterialAlphaCut'''.split())
 
 
 def extract(source):
@@ -67,7 +73,7 @@ def extract(source):
         record = symbols.setdefault(name, dict(symbol=name, classification=classification, lines=[]))
         record['lines'].append(node.lineno)
         if classification == 'portable':
-            record['scope'] = 'Only documented W0/W1 overloads; native JS pending N'
+            record['scope'] = 'Only documented W0/W1/W2 overloads; native JS pending N'
         elif classification == 'approximation':
             record['scope'] = 'Context service adaptation; not exported as an unchanged native function'
     revision = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
@@ -77,6 +83,19 @@ def extract(source):
                   symbols=sorted(symbols.values(), key=lambda r: r['symbol']), dynamicDeclarations=dynamic)
     (ROOT / 'contract').mkdir(exist_ok=True)
     (ROOT / 'contract/binding-inventory.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\r\n')
+    shader_root = source / 'tutorials/resources/core/shader'
+    names = [f'{family}{suffix}' for family in ('default','pbr') for suffix in ('.hps','_vs.sc','_fs.sc','_varying.def')] + ['forward_pipeline.sh','bgfx_shader.sh']
+    adapters = dict(sourceRevision=revision, source='harfang3d/tutorials/resources/core/shader',
+        sha256={name:hashlib.sha256((shader_root/name).read_bytes()).hexdigest() for name in names},
+        contract='src/render/material-contract.js', implementation='src/render/forward-shaders.js',
+        fixture='tools/generate_lighting_fixture.py',tests='tests/lighting-suite.js',
+        maxForwardPrograms=2, logicalVariants=dict(default=2,pbr=32,unlit=4),
+        adaptations=['Ambient-only environment; required probes/shadows need explicit compiler approval.',
+            'PBR native comparison descriptor enables existing alpha-cut shader branch; unneeded skinning variants omitted.',
+            'PBR native comparison uses RAW base-level bilinear texture sampling, matching W2.',
+            'Equal-priority lights retain scene node order; undefined arithmetic gets finite guards.'],
+        nativeJavaScript='pending-slice-N')
+    (ROOT / 'contract/shader-adapters.json').write_text(json.dumps(adapters,indent=2)+'\n',encoding='utf-8',newline='\r\n')
     return revision
 
 
@@ -105,6 +124,12 @@ def tutorials(source, revision):
             checkpoints=[0, 16, 32, 48] if ported else [], assertions=description.rstrip(' |'),
             visualTolerance='Feature/pixel-region checks; no pixel parity claim.' if ported else None,
             executionStatus={'nativeOriginal': 'not-run', 'nativeJS': 'not-ported', 'browser': 'not-run' if ported else 'not-ported'}))
+        if family == 'scene_light_priority':
+            rows[-1].update(slice='W2',requires=['render.forward','material.default','scene.lights'],
+                adaptations=['Original 16-light trajectories/distance priorities; compiled shared spheres; scheduled lifecycle.'],
+                assetRecipe='tools/build_assets.py; native priority selection at 48/1048/2048 ms.',
+                checkpoints=[0,16,32,48,1048,2048],visualTolerance='Numeric native slot selection and deterministic appearance capture.',
+                executionStatus={'nativeOriginal':'not-run','nativeJS':'not-ported','browser':'not-run'})
     assert len(rows) == 56, len(rows)
     counts = {key: sum(row['classification'] == key for row in rows) for key in ['retained', 'deferred', 'excluded']}
     assert counts == {'retained': 25, 'deferred': 12, 'excluded': 19}, counts
@@ -124,6 +149,21 @@ def tutorials(source, revision):
             assertions='Native hierarchy, transforms, camera, material assignment and cleanup; room also compares native rendered views.',
             visualTolerance='Room: channel MAE < 2/255 and < 3% pixels with any channel error > 16/255. PBR structure: no appearance parity claim.',
             executionStatus={'nativeOriginal':'not-run','nativeJS':'not-ported','browser':'not-run'}))
+    for case_id, family, adaptations in [
+        ('material_lighting',None,['Supplemental W2 controllable material/light gallery; no shadows/probes.']),
+        ('scene_pbr.materials','scene_pbr',['Original scene JSON/maps; explicit ambient/no-shadow adaptation; initial base-level bilinear sampling.']),
+        ('material_update_value.no_shadows','material_update_value',['Original one-second diffuse-map toggle; no spot shadows; explicit specular width 1.']),
+        ('scene_many_nodes.small.no_shadows','scene_many_nodes',['11x11 correctness grid, adjusted camera, compiled shared spheres; no shadows.']),
+        ('scene_many_nodes.stress','scene_many_nodes',['Original 101x101 workload retained as a separate pending W10 stress gate.'])]:
+        pending = case_id.endswith('.stress')
+        rows.append(dict(sourceFamily=family,sourceRevision=revision,caseId=case_id,
+            classification='retained-derivative' if family else 'supplemental-fixture',slice='W10' if pending else 'W2',
+            requires=['render.forward','scene.lights'],adaptations=adaptations,
+            assetRecipe='tools/build_assets.py; explicit native/web fixture adaptations in shader-provenance.json.',
+            checkpoints=[] if pending else [0,16,32,48],seed=None,
+            assertions='Material maps/states, shader equations, native images, lifetime and bounded programs; per-case checks in tests/lighting-suite.js.',
+            visualTolerance='Gallery/PBR: RGB MAE < 2/255; fewer than 3% pixels over 16/255. Adapted native reference, not original full lighting.',
+            executionStatus={'nativeOriginal':'not-run','nativeJS':'not-ported','browser':'not-ported' if pending else 'not-run'}))
     (ROOT / 'contract/tutorials.json').write_text(json.dumps(dict(familyCounts=counts, cases=rows), indent=2) + '\n', encoding='utf-8', newline='\r\n')
 
 

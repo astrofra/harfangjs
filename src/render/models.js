@@ -10,12 +10,12 @@ export function watchModel(model, callback) {
   set.add(callback); return () => set.delete(callback);
 }
 export class Model {
-  constructor(vertices, indices, submeshes, bounds) {
-    requireCondition(vertices instanceof Float32Array && vertices.length % 8 === 0, 'INVALID_MESH', 'Expected position/normal/UV float32 vertices');
-    integer(vertices.length / 8, 3, profile.limits.maxMeshVertices, 'mesh vertex count');
+  constructor(vertices, indices, submeshes, bounds, stride = 8) {
+    requireCondition([8,14].includes(stride) && vertices instanceof Float32Array && vertices.length % stride === 0, 'INVALID_MESH', 'Expected position/normal/UV float32 vertices with optional tangent frame');
+    integer(vertices.length / stride, 3, profile.limits.maxMeshVertices, 'mesh vertex count');
     requireCondition(indices instanceof Uint16Array || indices instanceof Uint32Array, 'INVALID_MESH', 'Expected uint16/uint32 indices');
     integer(indices.length, 3, profile.limits.maxMeshIndices, 'index count');
-    requireCondition(indices.length % 3 === 0 && indices.every(i => i < vertices.length / 8), 'INVALID_MESH', 'Triangle index is out of range');
+    requireCondition(indices.length % 3 === 0 && indices.every(i => i < vertices.length / stride), 'INVALID_MESH', 'Triangle index is out of range');
     for (const value of vertices) finite(value);
     requireCondition(Array.isArray(submeshes) && submeshes.length > 0, 'INVALID_MESH', 'Missing submeshes');
     let end = 0;
@@ -26,19 +26,28 @@ export class Model {
     }
     requireCondition(end === indices.length, 'INVALID_MESH', 'Submesh ranges do not cover indices');
     const actual = {min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity]};
-    for (let i = 0; i < vertices.length; i += 8) for (let j = 0; j < 3; ++j) {
+    for (let i = 0; i < vertices.length; i += stride) for (let j = 0; j < 3; ++j) {
       actual.min[j] = Math.min(actual.min[j], vertices[i + j]); actual.max[j] = Math.max(actual.max[j], vertices[i + j]);
     }
     if (bounds) for (const key of ['min', 'max']) {
       requireCondition(Array.isArray(bounds[key]) && bounds[key].length === 3, 'INVALID_MESH', 'Invalid bounds');
       bounds[key].forEach((n, i) => requireCondition(Number.isFinite(n) && Math.abs(n - actual[key][i]) < 0.001, 'INVALID_MESH', 'Bounds do not match positions'));
     }
-    refs.set(this, models.allocate({vertices: vertices.slice(), indices: indices.slice(), submeshes: structuredClone(submeshes), bounds: actual}));
+    const parts = submeshes.map(part => {
+      const bounds = {min: [Infinity,Infinity,Infinity], max: [-Infinity,-Infinity,-Infinity]};
+      for (let i = part.firstIndex; i < part.firstIndex + part.indexCount; ++i) for (let c = 0; c < 3; ++c) {
+        const value = vertices[indices[i] * stride + c];
+        bounds.min[c] = Math.min(bounds.min[c], value); bounds.max[c] = Math.max(bounds.max[c], value);
+      }
+      return {...part, bounds};
+    });
+    refs.set(this, models.allocate({vertices: vertices.slice(), indices: indices.slice(), submeshes: parts, bounds: actual, stride}));
   }
   IsValid() { return models.valid(refs.get(this)); }
   get bounds() { return structuredClone(modelData(this).bounds); }
   get submeshes() { return structuredClone(modelData(this).submeshes); }
-  get vertexCount() { return modelData(this).vertices.length / 8; }
+  get vertexCount() { const data = modelData(this); return data.vertices.length / data.stride; }
+  get hasTangents() { return modelData(this).stride === 14; }
   get indexCount() { return modelData(this).indices.length; }
   dispose() {
     if (!this.IsValid()) return;
@@ -51,26 +60,28 @@ export class Model {
 }
 
 export function decodeMesh(descriptor, buffer) {
-  requireCondition(descriptor?.schema === 'harfang-web-mesh/1' && descriptor.primitive === 'triangles' && descriptor.byteOrder === 'little',
+  requireCondition(['harfang-web-mesh/1','harfang-web-mesh/2'].includes(descriptor?.schema) && descriptor.primitive === 'triangles' && descriptor.byteOrder === 'little',
     'INVALID_MESH', 'Unsupported mesh schema, primitive or byte order');
   const attributes = [
     {name: 'position', type: 'float32', components: 3, offset: 0},
     {name: 'normal', type: 'float32', components: 3, offset: 12},
     {name: 'uv0', type: 'float32', components: 2, offset: 24}
   ];
+  const stride = descriptor.schema === 'harfang-web-mesh/2' ? 56 : 32;
+  if (stride === 56) attributes.push({name: 'tangent', type: 'float32', components: 3, offset: 32}, {name: 'binormal', type: 'float32', components: 3, offset: 44});
   requireCondition(Array.isArray(descriptor.attributes) && descriptor.attributes.length === attributes.length &&
     attributes.every((attribute, i) => Object.entries(attribute).every(([key,value]) => descriptor.attributes[i]?.[key] === value)) &&
-    descriptor.stride === 32 && buffer instanceof ArrayBuffer, 'INVALID_MESH', 'Unsupported W1 mesh layout or buffer');
+    descriptor.stride === stride && buffer instanceof ArrayBuffer, 'INVALID_MESH', 'Unsupported mesh layout or buffer');
   const count = integer(descriptor.vertexCount, 3, profile.limits.maxMeshVertices, 'vertex count');
   const indexCount = integer(descriptor.indexCount, 3, profile.limits.maxMeshIndices, 'index count');
   const indexSize = descriptor.indexType === 'uint16' ? 2 : descriptor.indexType === 'uint32' ? 4 : 0;
-  requireCondition(indexSize && descriptor.indexOffset === count * 32 && buffer.byteLength === count * 32 + indexCount * indexSize,
+  requireCondition(indexSize && descriptor.indexOffset === count * stride && buffer.byteLength === count * stride + indexCount * indexSize,
     'INVALID_MESH', 'Invalid mesh buffer length or alignment');
-  const view = new DataView(buffer), vertices = new Float32Array(count * 8);
+  const view = new DataView(buffer), vertices = new Float32Array(count * stride / 4);
   for (let i = 0; i < vertices.length; ++i) vertices[i] = view.getFloat32(i * 4, true);
   const indices = indexSize === 2 ? new Uint16Array(indexCount) : new Uint32Array(indexCount);
-  for (let i = 0; i < indices.length; ++i) indices[i] = indexSize === 2 ? view.getUint16(count * 32 + i * 2, true) : view.getUint32(count * 32 + i * 4, true);
-  return new Model(vertices, indices, descriptor.submeshes, descriptor.bounds);
+  for (let i = 0; i < indices.length; ++i) indices[i] = indexSize === 2 ? view.getUint16(count * stride + i * 2, true) : view.getUint32(count * stride + i * 4, true);
+  return new Model(vertices, indices, descriptor.submeshes, descriptor.bounds, stride / 4);
 }
 
 export function VertexLayoutPosFloatNormUInt8() { return Object.freeze({kind: 'position-normal-unorm8'}); }

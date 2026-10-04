@@ -1,9 +1,9 @@
 {
   "name": "harfang",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "HARFANG portable contract, static scenes and pure JavaScript WebGL 2 renderer",
+  "description": "HARFANG portable scenes, materials and forward lighting in pure JavaScript/WebGL 2",
   "exports": {".": "./src/index.js", "./browser": "./src/browser.js"},
   "scripts": {
     "build": "python tools/build.py",

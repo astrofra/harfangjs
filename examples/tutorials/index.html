@@ -2,7 +2,7 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HARFANG JS — static scenes and tutorials</title>
+<title>HARFANG JS — materials, lights and tutorials</title>
 <link rel="icon" href="data:,">
 <script type="importmap">{"imports":{"harfang":"../../src/index.js","harfang/browser":"../../src/browser.js"}}</script>
 <style>
@@ -18,11 +18,11 @@
   pre { margin:0; font:12px/1.5 monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
   @media (max-width:850px) { main { grid-template-columns:1fr; } }
 </style>
-<h1>HARFANG JS / static scenes</h1>
-<p>Shared JavaScript tutorial ports · WebGL 2 · profile <code>web-static/1</code></p>
+<h1>HARFANG JS / materials and lights</h1>
+<p>Shared JavaScript tutorial ports · WebGL 2 · profile <code>web-forward/1</code></p>
 <nav><label>Tutorial <select aria-label="Tutorial"></select></label><button id="pause">Pause / resume</button><button id="restart">Restart</button><a href="../../tests/index.html">Conformance tests</a></nav>
 <main><canvas aria-label="HARFANG rendering and input surface"></canvas><pre id="status" aria-live="off">Initializing…</pre></main>
-<p>Click the canvas for input. Space switches the room camera; Escape stops the application. Resize the window to resize the drawing buffer.</p>
-<p>The PBR structure example uses unlit diagnostic colors. Lighting, animation, audio and native QuickJS execution belong to later slices.</p>
+<p>Click the canvas for input. In the gallery: Space cycles lights, F toggles fog, N toggles the normal map, R changes roughness. Space switches the room camera. Escape stops the application.</p>
+<p>The material examples use ambient lighting without environment probes or shadows. The separate PBR structure example retains unlit diagnostic colors.</p>
 <script type="module" src="./browser-main.js"></script>
 </html>

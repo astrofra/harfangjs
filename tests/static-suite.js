@@ -47,7 +47,7 @@ export function registerStaticTests({test, assert, equal, near, throws, rejects,
       const entry = assets.describe('scenes/room.scn'); assert(entry.sha256 === entry.sourceSHA256);
       for (const scene of [await assets.loadScene('scenes/room.scn'), await assets.loadScene('scenes/room-binary.scn'), await assets.loadSceneJSON(body)]) {
         compare(scene, reference); compare(scene, compiled);
-        equal(scene.stats, {nodes:8, transforms:8, cameras:2, objects:5});
+        equal(scene.stats, {nodes:8, transforms:8, cameras:2, objects:5, lights:0});
         const prop = scene.GetNode('Parented prop'), object = prop.GetObject();
         equal(prop.GetTransform().GetParent().GetName(), 'Prop group');
         assert(scene.GetNode('Negative scale').GetTransform().GetScale().x < 0);
@@ -184,7 +184,7 @@ export function registerStaticTests({test, assert, equal, near, throws, rejects,
     try {
       const reference = await json(assets,'references/pbr-native.json');
       const scene = await assets.loadScene('materials/materials.scn', {structure:true}); compare(scene,reference);
-      equal(scene.stats, {nodes:15,transforms:15,cameras:1,objects:13});
+      equal(scene.stats, {nodes:15,transforms:15,cameras:1,objects:13,lights:0});
       assert(scene.metadata.structure && scene.metadata.lights.length === 1 && assets.stats.pictures === 0);
       for (const node of scene.GetNodes()) if (node.GetObject().IsValid()) assert(node.GetObject().GetMaterial(0).diagnostic);
       scene.dispose(); empty(assets);

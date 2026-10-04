@@ -375,17 +375,30 @@
       "caseId": "scene_light_priority",
       "classification": "retained",
       "slice": "W2",
-      "requires": [],
-      "adaptations": [],
-      "assetRecipe": "Pending applicable slice.",
+      "requires": [
+        "render.forward",
+        "material.default",
+        "scene.lights"
+      ],
+      "adaptations": [
+        "Original 16-light trajectories/distance priorities; compiled shared spheres; scheduled lifecycle."
+      ],
+      "assetRecipe": "tools/build_assets.py; native priority selection at 48/1048/2048 ms.",
       "seed": null,
-      "checkpoints": [],
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48,
+        1048,
+        2048
+      ],
       "assertions": "W2 | Select among 16 moving point lights according to priority and available slots; compare selection as well as appearance",
-      "visualTolerance": null,
+      "visualTolerance": "Numeric native slot selection and deterministic appearance capture.",
       "executionStatus": {
         "nativeOriginal": "not-run",
         "nativeJS": "not-ported",
-        "browser": "not-ported"
+        "browser": "not-run"
       }
     },
     {
@@ -1328,6 +1341,146 @@
         "nativeOriginal": "not-run",
         "nativeJS": "not-ported",
         "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": null,
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "caseId": "material_lighting",
+      "classification": "supplemental-fixture",
+      "slice": "W2",
+      "requires": [
+        "render.forward",
+        "scene.lights"
+      ],
+      "adaptations": [
+        "Supplemental W2 controllable material/light gallery; no shadows/probes."
+      ],
+      "assetRecipe": "tools/build_assets.py; explicit native/web fixture adaptations in shader-provenance.json.",
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "seed": null,
+      "assertions": "Material maps/states, shader equations, native images, lifetime and bounded programs; per-case checks in tests/lighting-suite.js.",
+      "visualTolerance": "Gallery/PBR: RGB MAE < 2/255; fewer than 3% pixels over 16/255. Adapted native reference, not original full lighting.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "scene_pbr",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "caseId": "scene_pbr.materials",
+      "classification": "retained-derivative",
+      "slice": "W2",
+      "requires": [
+        "render.forward",
+        "scene.lights"
+      ],
+      "adaptations": [
+        "Original scene JSON/maps; explicit ambient/no-shadow adaptation; initial base-level bilinear sampling."
+      ],
+      "assetRecipe": "tools/build_assets.py; explicit native/web fixture adaptations in shader-provenance.json.",
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "seed": null,
+      "assertions": "Material maps/states, shader equations, native images, lifetime and bounded programs; per-case checks in tests/lighting-suite.js.",
+      "visualTolerance": "Gallery/PBR: RGB MAE < 2/255; fewer than 3% pixels over 16/255. Adapted native reference, not original full lighting.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "material_update_value",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "caseId": "material_update_value.no_shadows",
+      "classification": "retained-derivative",
+      "slice": "W2",
+      "requires": [
+        "render.forward",
+        "scene.lights"
+      ],
+      "adaptations": [
+        "Original one-second diffuse-map toggle; no spot shadows; explicit specular width 1."
+      ],
+      "assetRecipe": "tools/build_assets.py; explicit native/web fixture adaptations in shader-provenance.json.",
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "seed": null,
+      "assertions": "Material maps/states, shader equations, native images, lifetime and bounded programs; per-case checks in tests/lighting-suite.js.",
+      "visualTolerance": "Gallery/PBR: RGB MAE < 2/255; fewer than 3% pixels over 16/255. Adapted native reference, not original full lighting.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "scene_many_nodes",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "caseId": "scene_many_nodes.small.no_shadows",
+      "classification": "retained-derivative",
+      "slice": "W2",
+      "requires": [
+        "render.forward",
+        "scene.lights"
+      ],
+      "adaptations": [
+        "11x11 correctness grid, adjusted camera, compiled shared spheres; no shadows."
+      ],
+      "assetRecipe": "tools/build_assets.py; explicit native/web fixture adaptations in shader-provenance.json.",
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "seed": null,
+      "assertions": "Material maps/states, shader equations, native images, lifetime and bounded programs; per-case checks in tests/lighting-suite.js.",
+      "visualTolerance": "Gallery/PBR: RGB MAE < 2/255; fewer than 3% pixels over 16/255. Adapted native reference, not original full lighting.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "scene_many_nodes",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "caseId": "scene_many_nodes.stress",
+      "classification": "retained-derivative",
+      "slice": "W10",
+      "requires": [
+        "render.forward",
+        "scene.lights"
+      ],
+      "adaptations": [
+        "Original 101x101 workload retained as a separate pending W10 stress gate."
+      ],
+      "assetRecipe": "tools/build_assets.py; explicit native/web fixture adaptations in shader-provenance.json.",
+      "checkpoints": [],
+      "seed": null,
+      "assertions": "Material maps/states, shader equations, native images, lifetime and bounded programs; per-case checks in tests/lighting-suite.js.",
+      "visualTolerance": "Gallery/PBR: RGB MAE < 2/255; fewer than 3% pixels over 16/255. Adapted native reference, not original full lighting.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
       }
     }
   ]

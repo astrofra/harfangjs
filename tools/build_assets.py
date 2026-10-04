@@ -1,4 +1,4 @@
-"""Build W1 native/web assets from a common generated source tree."""
+"""Build W1/W2 native/web assets from a common generated source tree."""
 import argparse
 import json
 import re
@@ -8,6 +8,7 @@ import sys
 
 from assetc_web import ROOT, compile_assets
 from generate_fixture import generate
+from generate_lighting_fixture import generate_lighting
 
 
 def build_assets(harfang=None, bridge=None, assetc=None):
@@ -20,6 +21,7 @@ def build_assets(harfang=None, bridge=None, assetc=None):
     source = ROOT / 'build/fixtures/source'
     resources = harfang / 'tutorials/resources'
     generate(source, bridge, resources)
+    generate_lighting(source, bridge, resources)
     native = ROOT / 'build/assets-native'; native.mkdir(parents=True, exist_ok=True)
     result = subprocess.run([str(assetc), '-api', 'GL', str(source), str(native)], capture_output=True, text=True)
     (ROOT / 'build/native-assetc.log').write_text(result.stdout + result.stderr, encoding='utf-8')
@@ -30,19 +32,24 @@ def build_assets(harfang=None, bridge=None, assetc=None):
     subprocess.run([str(bridge), 'scene-binary', str(source / 'scenes/room.scn'), str(binary)], capture_output=True, check=True)
     references = []
     for name, scene in [('room', source / 'scenes/room.scn'), ('room-compiled', native / 'scenes/room.scn'),
-                        ('pbr', resources / 'materials/materials.scn')]:
+                        ('pbr', resources / 'materials/materials.scn'), ('lighting',source / 'scenes/lighting.scn')]:
         reference = ROOT / f'build/fixtures/{name}-native.json'
         subprocess.run([str(bridge), 'scene-state', str(scene), str(reference)], capture_output=True, check=True)
         references.append((f'references/{name}-native.json', reference))
     output = ROOT / 'build/assets-web'
+    priority = ROOT / 'build/fixtures/priority-native.json'
+    subprocess.run([str(bridge),'priority-states','-',str(priority)],capture_output=True,check=True)
+    references.append(('references/priority-native.json',priority))
     manifest = compile_assets([source, binary.parents[1], resources], output, bridge,
-        ['scenes/room.scn', 'scenes/room-binary.scn'], images=['pictures/owl.jpg'],
-        structure_scenes=['materials/materials.scn'], references=references)
+        ['scenes/room.scn', 'scenes/room-binary.scn'], images=['pictures/owl.jpg','textures/squares.png'],
+        structure_scenes=['materials/materials.scn'], references=references,
+        forward_scenes=['scenes/lighting.scn','scenes/lighting-fog.scn',
+            dict(name='materials/materials.scn',alias='materials/materials-forward.scn',ignore_shadows=True,ambient_environment=True)])
     report = dict(nativeSource=str(source), nativeOutput=str(native), webOutput=str(output),
                   assets=len(manifest['assets']), bytes=sum(v['byteLength'] for v in manifest['assets'].values()),
                   scenes=manifest['reports'], nativeJavaScript='pending-slice-N')
     (ROOT / 'build/asset-validation.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
-    print(f'Compiled W1 assets: {report["assets"]} entries, {report["bytes"]} bytes; native + web.')
+    print(f'Compiled W1/W2 assets: {report["assets"]} entries, {report["bytes"]} bytes; native + web.')
     return output
 
 

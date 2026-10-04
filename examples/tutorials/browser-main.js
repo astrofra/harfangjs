@@ -1,18 +1,19 @@
 import {createBrowserApplication} from 'harfang/browser';
 import {createApplication, cases} from './application.js';
 import {createStaticApplication, staticCases} from './static-application.js';
+import {createLightingApplication, lightingCases} from './lighting-application.js';
 
 const query = new URLSearchParams(location.search);
-const caseId = query.get('case') ?? 'scene_static_room';
+const caseId = query.get('case') ?? 'material_lighting';
 const select = document.querySelector('select');
-for (const name of [...staticCases, ...cases]) select.add(new Option(name, name, false, name === caseId));
+for (const name of [...lightingCases, ...staticCases, ...cases]) select.add(new Option(name, name, false, name === caseId));
 select.addEventListener('change', () => { location.search = `?case=${encodeURIComponent(select.value)}`; });
 const status = document.querySelector('#status');
 let runner, application;
 const assetBaseURL = new URL('../../assets-web/', import.meta.url).href;
 let manifest;
 function makeRunner() {
-  application = staticCases.includes(caseId) ? createStaticApplication(caseId) : createApplication(caseId);
+  application = lightingCases.includes(caseId) ? createLightingApplication(caseId) : staticCases.includes(caseId) ? createStaticApplication(caseId) : createApplication(caseId);
   runner = createBrowserApplication(application, {
     canvas: document.querySelector('canvas'), modules: {'behaviors/communication.js': () => import('./behaviors/communication.js')},
     manifest, assetBaseURL,

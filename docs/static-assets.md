@@ -1,6 +1,6 @@
-# W1 static assets
+# W1 static assets and W2 forward extensions
 
-The prototype writer is `tools/assetc_web.py`. It follows the feasibility study's temporary helper allowance: native binary scenes and source geometry are read by a C++ bridge linked to HARFANG, while Python validates the W1 subset and writes web payloads. Native `assetc` itself is unchanged. Consolidating this writer into the shared compiler remains future work.
+The prototype writer is `tools/assetc_web.py`. It follows the feasibility study's temporary helper allowance: native binary scenes and source geometry are read by a C++ bridge linked to HARFANG, while Python validates the W1/W2 subset and writes web payloads. Native `assetc` itself is unchanged. Consolidating this writer into the shared compiler remains future work. [Forward materials](forward-materials.md) describes W2 tangent frames, material maps and explicit lighting adaptations.
 
 ## Build paths
 
@@ -30,18 +30,18 @@ Compile another supported scene independently:
 python tools/assetc_web.py path/to/source path/to/assets-web --scene scenes/example.scn --bridge build/native/Release/harfang_web_asset_bridge.exe
 ```
 
-`--mount DIR` adds a logical source root. `--image pictures/image.png` compiles a standalone image. `--structure-scene materials/materials.scn` explicitly permits the tutorial PBR family as an opaque unlit diagnostic. It reports that adaptation; normal scene compilation rejects lights/PBR. No runtime source fallback exists.
+`--mount DIR` adds a logical source root. `--image pictures/image.png` compiles a standalone image. `--structure-scene materials/materials.scn` explicitly permits the tutorial PBR family as an opaque unlit diagnostic. `--forward-scene scenes/example.scn` enables W2 materials/lights. Plain `--scene` retains the W1 subset and rejects required lighting. No runtime source fallback exists.
 
 Source and output directories must be disjoint. Conversion finishes in staging before replacing a previously marked compiler output. An unmarked output directory is never replaced. Failed discovery/conversion leaves the previous output intact. The writer emits compiler/bridge hashes, content hashes, and a deterministic asset build ID; the native assetc log and build report are in `build/`.
 
 ## Manifest and payloads
 
-The manifest declares `harfang-web-assets/1`, API `harfang-js/1`, and profile `web-static/1`. Logical paths stay native-style names such as `models/seamed-cube.geo` and `pictures/owl.jpg`; emitted URIs are content-addressed under `objects/`. Each compiled entry declares kind, byte length, SHA-256, dependencies, and required capabilities. Runtime checks validate references/cycles, length, and integrity before interpreting the payload. Use HTTPS or localhost for browser SHA-256 support.
+The manifest declares `harfang-web-assets/1`, API `harfang-js/1`, and profile `web-static/1` or `web-forward/1` when forward scenes are included. Logical paths stay native-style names such as `models/seamed-cube.geo` and `pictures/owl.jpg`; emitted URIs are content-addressed under `objects/`. Each compiled entry declares kind, byte length, SHA-256, dependencies, and required capabilities. Runtime checks validate references/cycles, length, and integrity before interpreting the payload. Use HTTPS or localhost for browser SHA-256 support.
 
 | Kind | Payload |
 | --- | --- |
-| `scene-json` | Unmodified supported native JSON bytes; native binary scenes are converted with native load/save code offline. `mode` is `static` or explicit `structure`. |
-| `mesh` | JSON descriptor using `harfang-web-mesh/1`, plus one dependent `bytes` buffer. Native compiled bgfx `.geo` is rejected. |
+| `scene-json` | Unmodified supported native JSON bytes; native binary scenes are converted with native load/save code offline. `mode` is `static`, explicit `structure`, or `forward`; forward adaptations are declared separately. |
+| `mesh` | JSON descriptor using `harfang-web-mesh/1`, or `/2` with tangent frames, plus one dependent `bytes` buffer. Native compiled bgfx `.geo` is rejected. |
 | `image` | Ordinary PNG/JPEG bytes emitted by the compiler, with checked dimensions/MIME, encoded RGB color space, linear filtering, repeat addressing, no mip chain. |
 | `bytes` | Mesh buffers or diagnostic native state references. |
 
@@ -49,7 +49,7 @@ Mesh buffers are little-endian indexed triangles: tightly interleaved float32 po
 
 Image orientation is unchanged from the decoded rows: UV `(0,0)` addresses the first/top source row. No implicit vertical flip, browser color conversion, gamma transform, or alpha premultiplication occurs. Unlit output multiplies sampled encoded RGB by `uColor` directly. PNG alpha is sampled, but W1 draws opaque materials. This is an explicit simple material convention; it does not claim PBR color-space support or W4 texture delivery.
 
-The room's `shaders/unlit.hps` is provided by the fixture generator. Native and web versions implement the same `uColor` vec4 and stage-0 `uColorMap` multiplication. The native fixture supplies a white texture for solid-color materials. Other program paths, nonempty flags, and unsupported uniforms/states reject. `shaders/mdl` is the separate reviewed direct-drawing tutorial adapter, including its packed-normal decoding and original lighting formula.
+The room's `shaders/unlit.hps` is provided by the fixture generator. Native and web versions implement the same `uColor` vec4 and stage-0 `uColorMap` multiplication, extended in W2 with optional alpha cut. The native fixture supplies a white texture for solid-color materials. W1 rejects other program paths and nonempty flags; W2 permits the registry in `src/render/material-contract.js`. `shaders/mdl` is the separate reviewed direct-drawing tutorial adapter, including its packed-normal decoding and original lighting formula.
 
 ## Runtime use and ownership
 

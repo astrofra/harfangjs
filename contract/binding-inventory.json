@@ -105,7 +105,7 @@
       "lines": [
         980
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetFov",
@@ -113,7 +113,7 @@
       "lines": [
         991
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetIsOrthographic",
@@ -121,7 +121,7 @@
       "lines": [
         993
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetSize",
@@ -129,7 +129,7 @@
       "lines": [
         995
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetZFar",
@@ -137,7 +137,7 @@
       "lines": [
         987
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetZNear",
@@ -145,7 +145,7 @@
       "lines": [
         985
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetZRange",
@@ -160,7 +160,7 @@
       "lines": [
         982
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.SetFov",
@@ -168,7 +168,7 @@
       "lines": [
         992
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.SetIsOrthographic",
@@ -183,7 +183,7 @@
       "lines": [
         996
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.SetZFar",
@@ -413,7 +413,7 @@
       "lines": [
         3128
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "ColorFromABGR32",
@@ -449,7 +449,7 @@
       "lines": [
         3176
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "ColorToABGR32",
@@ -485,7 +485,7 @@
       "lines": [
         728
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "ComputeAspectRatioY",
@@ -507,7 +507,7 @@
       "lines": [
         725
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "ComputeOrthographicViewState",
@@ -522,7 +522,7 @@
       "lines": [
         726
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "ComputePerspectiveViewState",
@@ -664,7 +664,7 @@
       "lines": [
         2667
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "CreateCylinderModel",
@@ -786,7 +786,7 @@
       "lines": [
         2669
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "CreatePointLight",
@@ -871,7 +871,7 @@
       "lines": [
         3728
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "CrossProductMat3",
@@ -984,7 +984,7 @@
       "lines": [
         3850
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Deg3",
@@ -992,7 +992,7 @@
       "lines": [
         3750
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "DegreeToRadian",
@@ -1130,7 +1130,7 @@
         3727,
         3351
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "DrawLines",
@@ -1427,7 +1427,7 @@
       "lines": [
         723
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "FpsController",
@@ -1760,7 +1760,7 @@
         3587,
         3669
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "GetCurrentWorkingDirectory",
@@ -1988,10 +1988,11 @@
     },
     {
       "symbol": "GetMaterialTexture",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2602
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "GetMaterialTextures",
@@ -2199,7 +2200,7 @@
       "lines": [
         3595
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "GetTextures",
@@ -2215,7 +2216,7 @@
         3503,
         3596
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "GetUserFolder",
@@ -4309,7 +4310,7 @@
         3666,
         3731
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "InverseFast",
@@ -4629,7 +4630,7 @@
         3722,
         3349
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Len2",
@@ -4659,38 +4660,43 @@
     },
     {
       "symbol": "Light",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1031
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.GetDiffuseColor",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1040
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.GetDiffuseIntensity",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1042
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.GetInnerAngle",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1050
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.GetOuterAngle",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1052
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.GetPSSMSplit",
@@ -4701,17 +4707,19 @@
     },
     {
       "symbol": "Light.GetPriority",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1056
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.GetRadius",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1048
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.GetShadowFar",
@@ -4736,59 +4744,67 @@
     },
     {
       "symbol": "Light.GetSpecularColor",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1044
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.GetSpecularIntensity",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1046
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.GetType",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1036
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.IsValid",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1033
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.SetDiffuseColor",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1041
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.SetDiffuseIntensity",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1043
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.SetInnerAngle",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1051
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.SetOuterAngle",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1053
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.SetPSSMSplit",
@@ -4799,17 +4815,19 @@
     },
     {
       "symbol": "Light.SetPriority",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1057
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.SetRadius",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1049
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.SetShadowFar",
@@ -4834,24 +4852,27 @@
     },
     {
       "symbol": "Light.SetSpecularColor",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1045
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.SetSpecularIntensity",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1047
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Light.SetType",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1037
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "LinearInterpolate",
@@ -5301,7 +5322,7 @@
         3244,
         3560
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Mat44",
@@ -5310,7 +5331,7 @@
         3245,
         3646
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Mat4LookAt",
@@ -5342,10 +5363,11 @@
     },
     {
       "symbol": "Material",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2585
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "MaterialRef",
@@ -5683,7 +5705,7 @@
       "lines": [
         936
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.ComputeCameraViewState",
@@ -5712,7 +5734,7 @@
       "lines": [
         1167
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.Enable",
@@ -5720,7 +5742,7 @@
       "lines": [
         1166
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetCamera",
@@ -5728,7 +5750,7 @@
       "lines": [
         1178
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetCollision",
@@ -5774,10 +5796,11 @@
     },
     {
       "symbol": "Node.GetLight",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1192
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetMinMax",
@@ -5792,7 +5815,7 @@
       "lines": [
         1209
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetObject",
@@ -5800,7 +5823,7 @@
       "lines": [
         1185
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetRigidBody",
@@ -5829,7 +5852,7 @@
       "lines": [
         1173
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetUid",
@@ -5893,7 +5916,7 @@
       "lines": [
         1169
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.IsInstantiatedBy",
@@ -5908,7 +5931,7 @@
       "lines": [
         1170
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.IsValid",
@@ -5916,7 +5939,7 @@
       "lines": [
         1158
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.RemoveCamera",
@@ -5973,7 +5996,7 @@
       "lines": [
         1179
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.SetCollision",
@@ -5998,10 +6021,11 @@
     },
     {
       "symbol": "Node.SetLight",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1193
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.SetName",
@@ -6009,7 +6033,7 @@
       "lines": [
         1210
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.SetObject",
@@ -6017,7 +6041,7 @@
       "lines": [
         1186
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.SetRigidBody",
@@ -6039,7 +6063,7 @@
       "lines": [
         1174
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Node.SetWorld",
@@ -6093,7 +6117,7 @@
         3733,
         3353
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "NormalizePath",
@@ -6144,7 +6168,7 @@
       "lines": [
         1014
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Object.GetMaterialName",
@@ -6152,7 +6176,7 @@
       "lines": [
         1016
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Object.GetMinMax",
@@ -6210,7 +6234,7 @@
       "lines": [
         1017
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Object.SetModelRef",
@@ -6583,7 +6607,7 @@
       "lines": [
         3202
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Picture.GetPixelRGBA",
@@ -6598,7 +6622,7 @@
       "lines": [
         3201
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Picture.SetData",
@@ -6907,7 +6931,7 @@
       "lines": [
         737
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "ProjectToScreenSpace",
@@ -6915,7 +6939,7 @@
       "lines": [
         745
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "ProjectZToClipSpace",
@@ -7347,7 +7371,7 @@
       "lines": [
         3628
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "RotationMatX",
@@ -7565,7 +7589,7 @@
       "lines": [
         3632
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene",
@@ -7573,7 +7597,7 @@
       "lines": [
         933
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.Clear",
@@ -7609,7 +7633,7 @@
       "lines": [
         1359
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.CreateCollision",
@@ -7634,10 +7658,11 @@
     },
     {
       "symbol": "Scene.CreateLight",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1379
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.CreateLinearLight",
@@ -7652,7 +7677,7 @@
       "lines": [
         1346
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.CreateObject",
@@ -7668,7 +7693,7 @@
       "lines": [
         1363
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.CreatePointLight",
@@ -7704,7 +7729,7 @@
       "lines": [
         1351
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.DestroyAnimPlayer",
@@ -7719,7 +7744,7 @@
       "lines": [
         1364
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.DestroyCollision",
@@ -7737,10 +7762,11 @@
     },
     {
       "symbol": "Scene.DestroyLight",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1380
-      ]
+      ],
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.DestroyNode",
@@ -7748,7 +7774,7 @@
       "lines": [
         1347
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.DestroyObject",
@@ -7756,7 +7782,7 @@
       "lines": [
         1375
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.DestroyRigidBody",
@@ -7778,7 +7804,7 @@
       "lines": [
         1355
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GarbageCollect",
@@ -7814,7 +7840,7 @@
       "lines": [
         1434
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GetKeys",
@@ -7836,7 +7862,7 @@
       "lines": [
         1292
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GetNodeChildren",
@@ -7851,7 +7877,7 @@
       "lines": [
         1300
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GetNodeEx",
@@ -7866,7 +7892,7 @@
       "lines": [
         1295
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GetNodesWithComponent",
@@ -8021,7 +8047,7 @@
       "lines": [
         1435
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.SetProbe",
@@ -8849,10 +8875,11 @@
     },
     {
       "symbol": "SetMaterialAlphaCut",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2637
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "SetMaterialAmbientUsesUV1",
@@ -8863,17 +8890,19 @@
     },
     {
       "symbol": "SetMaterialBlendMode",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2616
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "SetMaterialDepthTest",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2612
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "SetMaterialDiffuseUsesUV1",
@@ -8884,10 +8913,11 @@
     },
     {
       "symbol": "SetMaterialFaceCulling",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2608
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "SetMaterialNormalMapInWorldSpace",
@@ -8919,10 +8949,11 @@
     },
     {
       "symbol": "SetMaterialTexture",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2599
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "SetMaterialTextureRef",
@@ -8933,7 +8964,7 @@
     },
     {
       "symbol": "SetMaterialValue",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2592,
         2593,
@@ -8942,21 +8973,24 @@
         2596,
         2597,
         2598
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "SetMaterialWriteRGBA",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2619
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "SetMaterialWriteZ",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2625
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "SetRenderDebug",
@@ -9435,7 +9469,7 @@
       "lines": [
         945
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.ClearParent",
@@ -9443,7 +9477,7 @@
       "lines": [
         966
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetParent",
@@ -9451,7 +9485,7 @@
       "lines": [
         964
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetPos",
@@ -9459,7 +9493,7 @@
       "lines": [
         950
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetPosRot",
@@ -9467,7 +9501,7 @@
       "lines": [
         959
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetRot",
@@ -9475,7 +9509,7 @@
       "lines": [
         952
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetScale",
@@ -9483,7 +9517,7 @@
       "lines": [
         954
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetTRS",
@@ -9498,7 +9532,7 @@
       "lines": [
         968
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.IsValid",
@@ -9506,7 +9540,7 @@
       "lines": [
         947
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetLocal",
@@ -9521,7 +9555,7 @@
       "lines": [
         965
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetPos",
@@ -9529,7 +9563,7 @@
       "lines": [
         951
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetPosRot",
@@ -9537,7 +9571,7 @@
       "lines": [
         960
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetRot",
@@ -9545,7 +9579,7 @@
       "lines": [
         953
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetScale",
@@ -9553,7 +9587,7 @@
       "lines": [
         955
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetTRS",
@@ -9589,7 +9623,7 @@
       "lines": [
         3636
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "TranslationMat3",
@@ -9604,7 +9638,7 @@
       "lines": [
         3627
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Transpose",
@@ -9685,10 +9719,11 @@
     },
     {
       "symbol": "UpdateMaterialPipelineProgramVariant",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2766
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "UpdateTexture",
@@ -9914,7 +9949,7 @@
         3241,
         3676
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Vec3.Set",
@@ -9937,7 +9972,7 @@
         3242,
         3369
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Vec4.Set",
@@ -9973,7 +10008,7 @@
       "lines": [
         2415
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayout.Add",
@@ -9981,7 +10016,7 @@
       "lines": [
         2418
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayout.Begin",
@@ -9989,7 +10024,7 @@
       "lines": [
         2417
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayout.End",
@@ -9997,7 +10032,7 @@
       "lines": [
         2420
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayout.GetOffset",
@@ -10061,7 +10096,7 @@
       "lines": [
         2428
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayoutPosFloatNormUInt8TexCoord0UInt8",
@@ -10083,7 +10118,7 @@
       "lines": [
         2796
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.Begin",
@@ -10091,7 +10126,7 @@
       "lines": [
         2801
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.Clear",
@@ -10099,7 +10134,7 @@
       "lines": [
         2820
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.End",
@@ -10107,7 +10142,7 @@
       "lines": [
         2818
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.GetCapacity",
@@ -10171,7 +10206,7 @@
       "lines": [
         2814
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.SetColor1",
@@ -10207,7 +10242,7 @@
       "lines": [
         2802
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.SetTangent",
@@ -10538,7 +10573,7 @@
       "lines": [
         173
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "time_from_ms_f",
@@ -10553,7 +10588,7 @@
       "lines": [
         175
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "time_from_sec",
@@ -10561,7 +10596,7 @@
       "lines": [
         172
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "time_from_sec_f",
@@ -10569,7 +10604,7 @@
       "lines": [
         165
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "time_from_us",
@@ -10619,7 +10654,7 @@
       "lines": [
         161
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_ms_f",
@@ -10627,7 +10662,7 @@
       "lines": [
         154
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_ns",
@@ -10635,7 +10670,7 @@
       "lines": [
         163
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_sec",
@@ -10643,7 +10678,7 @@
       "lines": [
         160
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_sec_f",
@@ -10651,7 +10686,7 @@
       "lines": [
         153
       ],
-      "scope": "Only documented W0/W1 overloads; native JS pending N"
+      "scope": "Only documented W0/W1/W2 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_string",

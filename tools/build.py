@@ -54,7 +54,7 @@ def build(assets=None):
     shutil.copytree(assets, target / 'assets-web')
     shutil.copy2(ROOT / 'LICENSE', target / 'LICENSE')
     (target / 'index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=examples/tutorials/"><a href="examples/tutorials/">HARFANG JS tutorials</a>\n', encoding='utf-8')
-    report = dict(api='harfang-js/1', profile='web-static/1', nativeJS='pending-slice-N',
+    report = dict(api='harfang-js/1', profile='web-forward/1', nativeJS='pending-slice-N',
                   runtimeDependencies=[], wasmPayloads=0, files=audit(target))
     (target / 'release.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     print(f'Built {target}: {len(report["files"])} audited files, no runtime dependencies.')

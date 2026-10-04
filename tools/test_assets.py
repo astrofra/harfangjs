@@ -7,7 +7,7 @@ import struct
 import tempfile
 import unittest
 
-from assetc_web import ROOT, Compiler, compile_assets, image_info, validate_scene
+from assetc_web import ROOT, Compiler, compile_assets, image_info, validate_scene, material
 
 
 class AssetCompilerTests(unittest.TestCase):
@@ -95,6 +95,45 @@ class AssetCompilerTests(unittest.TestCase):
         with self.assertRaises(ValueError): validate_scene(scene,'pbr')
         validate_scene(scene,'pbr',structure=True)
         self.assertEqual(pbr['mode'],'structure')
+
+    def test_forward_scene_adaptations_and_shared_material_contract(self):
+        entry = self.manifest['assets']['materials/materials-forward.scn']
+        body = json.loads((self.web / entry['uri']).read_bytes())
+        self.assertEqual(entry['sha256'],entry['sourceSHA256'])
+        self.assertEqual(entry['mode'],'forward')
+        with self.assertRaisesRegex(ValueError,'shadows'): validate_scene(body,'pbr',lighting=True)
+        with self.assertRaisesRegex(ValueError,'ambient adaptation'): validate_scene(body,'pbr',lighting=True,ignore_shadows=True)
+        validate_scene(body,'pbr',lighting=True,ignore_shadows=True,ambient_environment=True)
+        gallery = json.loads((self.source / 'scenes/lighting.scn').read_bytes())
+        validate_scene(gallery,'gallery',lighting=True)
+        for mutation in [dict(program='custom.hps'),dict(flags=['NormalMapInWorldSpace']),dict(flags=['EnableSkinning']),
+                         dict(textures=[dict(name='uNormalMap',stage=3,path='pictures/normal.png')]),dict(blend_mode='oit'),dict(depth_test='reverse')]:
+            mat = copy.deepcopy(gallery['objects'][0]['materials'][0]); mat.update(mutation)
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError): material(mat,'gallery',lighting=True)
+
+    def test_tangent_frames_native_handedness_and_missing_frame_rejection(self):
+        mesh = json.loads((self.web / self.manifest['assets']['models/tangent-quad.geo']['uri']).read_bytes())
+        self.assertEqual((mesh['schema'],mesh['stride']),('harfang-web-mesh/2',56))
+        data = (self.web / self.manifest['assets'][mesh['buffer']]['uri']).read_bytes()
+        # The native quad's UV-v runs down, retaining a negative binormal.
+        values = struct.unpack_from('<14f',data)
+        self.assertEqual(values[8:14],(1,0,0,0,-1,0))
+        with tempfile.TemporaryDirectory(prefix='hg-tangent-test-') as tmp:
+            root = Path(tmp); source = root/'source'; source.mkdir()
+            scene = copy.deepcopy(self.room)
+            scene['objects'][0]['materials'][0] = dict(program='core/shader/pbr.hps',textures=[dict(name='uNormalMap',stage=2,path='pictures/normal.png')])
+            (source/'bad.scn').write_text(json.dumps(scene))
+            with self.assertRaisesRegex(ValueError,'missing tangent frames'):
+                compile_assets([source,self.source],root/'output',self.bridge,[],forward_scenes=['bad.scn'])
+
+    def test_forward_lights_and_fog_reject_invalid_data(self):
+        original = json.loads((self.source / 'scenes/lighting.scn').read_bytes())
+        for mutation in [dict(type='area'),dict(radius=-1),dict(diffuse_intensity=-1),dict(priority=float('inf')),
+                         dict(outer_angle=.1,inner_angle=.5),dict(diffuse=[1,2,3]),dict(shadow_type='raytraced')]:
+            scene = copy.deepcopy(original); scene['lights'][0].update(mutation)
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError): validate_scene(scene,'gallery',lighting=True)
+        original['environment']['fog_near']=10; original['environment']['fog_far']=5
+        with self.assertRaisesRegex(ValueError,'fog range'): validate_scene(original,'gallery',lighting=True)
 
 
 if __name__ == '__main__':

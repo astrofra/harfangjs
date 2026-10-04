@@ -4,7 +4,7 @@ import {Scene} from './scene.js';
 import {Vec3, Vec2, Color, Deg3, Deg} from '../core/math.js';
 import {decodeMesh, watchModel} from '../render/models.js';
 import {Picture, watchImage} from '../render/images.js';
-import {createUnlitMaterial} from '../render/static.js';
+import {createMaterial} from '../render/materials.js';
 import {validateSceneJSON, nullReference} from './schema.js';
 
 export class StaticAssets extends ResourceManager {
@@ -68,16 +68,17 @@ export class StaticAssets extends ResourceManager {
       requireCondition(entry.kind === 'scene-json', 'INVALID_ASSET_KIND', 'Expected compiled native scene JSON', id);
       requireCondition(entry.mode !== 'structure' || structure, 'UNSUPPORTED_SCENE_FEATURE', 'This scene requires explicit structure: true diagnostic rendering', id);
       requireCondition(!structure || entry.mode === 'structure', 'INVALID_SCENE_MODE', 'Structural approximation was not approved by the compiler', id);
-      return this.#createScene(await this.#json(id, signal), {source: id, signal, structure, dependencies: entry.dependencies});
+      return this.#createScene(await this.#json(id, signal), {source: id, signal, structure, dependencies: entry.dependencies,
+        lighting:entry.mode === 'forward', ...entry.lighting});
     });
   }
-  loadSceneJSON(body, {signal, source = 'scene-json', structure = false} = {}) {
+  loadSceneJSON(body, {signal, source = 'scene-json', structure = false, lighting = false, ignoreShadows = false, ambientEnvironment = false} = {}) {
     // Explicit development entry for an unmodified supported native JSON body.
     // All dependencies still resolve exclusively through the compiled manifest.
-    return this.#run(source, signal, signal => this.#createScene(body, {source, signal, structure}));
+    return this.#run(source, signal, signal => this.#createScene(body, {source, signal, structure, lighting, ignoreShadows, ambientEnvironment}));
   }
-  async #createScene(body, {source, signal, structure, dependencies}) {
-    validateSceneJSON(body, {source, structure});
+  async #createScene(body, {source, signal, structure, dependencies, lighting = false, ignoreShadows = false, ambientEnvironment = false}) {
+    validateSceneJSON(body, {source, structure, lighting, ignoreShadows, ambientEnvironment});
     const scene = new Scene(), models = new Map(), pictures = new Map();
     const requireDependency = id => {
       requireCondition(!dependencies || dependencies.includes(id), 'MISSING_ASSET', `Undeclared dependency ${id}`, source);
@@ -85,7 +86,12 @@ export class StaticAssets extends ResourceManager {
     };
     try {
       scene.metadata = structuredClone({key_values: body.key_values ?? {}, environment: body.environment ?? {},
-        lights: body.lights ?? [], structure, source});
+        lights: body.lights ?? [], structure, source, lighting, adaptations:{ignoreShadows,ambientEnvironment}});
+      if (lighting) {
+        const env = body.environment ?? {};
+        scene.environment = {ambient:new Color(...(env.ambient ?? [0,0,0,255]).map(c => c/255)),
+          fog_color:new Color(...(env.fog_color ?? [0,0,0,255]).map(c => c/255)), fog_near:env.fog_near ?? 0, fog_far:env.fog_far ?? 0};
+      }
       scene.canvas = {clear_color: body.canvas?.clear_color ?? true, clear_z: body.canvas?.clear_z ?? true,
         color: body.canvas?.color ? new Color(...body.canvas.color.map(c => c / 255)) : new Color(0.05,0.06,0.08)};
       const objects = [];
@@ -94,20 +100,22 @@ export class StaticAssets extends ResourceManager {
         if (!models.has(id)) models.set(id, scene.own(await this.loadModel(id, {signal})));
         const materials = [];
         for (const material of object.materials) {
-          const texture = material.program === 'shaders/unlit.hps' ? material.textures?.find(t => t.name === 'uColorMap' && t.path) : undefined;
-          let picture;
-          if (texture) {
+          const textureRefs = new Map();
+          for (const texture of structure ? [] : material.textures ?? []) {
+            if (!texture.path) continue;
             const imageId = requireDependency(texture.path);
             if (!pictures.has(imageId)) pictures.set(imageId, scene.own(await this.loadPicture(imageId, {signal})));
-            picture = pictures.get(imageId);
+            textureRefs.set(texture.name,pictures.get(imageId));
           }
-          materials.push(createUnlitMaterial(material, picture, {structure}));
+          requireCondition(!textureRefs.has('uNormalMap') || models.get(id).hasTangents,'MISSING_TANGENTS','Normal mapping requires compiled tangent frames',id);
+          materials.push(createMaterial(material, textureRefs, {structure}));
         }
         const component = scene.CreateObject(models.get(id), materials);
         (object.material_infos ?? []).forEach((info, i) => { if (i < materials.length) component.SetMaterialName(i, info.name ?? ''); });
         objects.push(component);
       }
       if (signal.aborted) throw abortError(source);
+      this.#renderer?.prepareMaterials(objects.flatMap(object => Array.from({length:object.GetMaterialCount()},(_,i) => object.GetMaterial(i))));
       const transforms = (body.transforms ?? []).map(t => scene.CreateTransform(new Vec3(...t.pos), Deg3(...t.rot), new Vec3(...t.scl)));
       const cameras = (body.cameras ?? []).map(c => {
         const camera = c.ortho ? scene.CreateOrthographicCamera(c.zrange?.znear ?? 0.01, c.zrange?.zfar ?? 1000, c.size ?? 1) :
@@ -115,12 +123,20 @@ export class StaticAssets extends ResourceManager {
         camera.SetFov(c.fov ?? Deg(40)); camera.SetSize(c.size ?? 1); return camera;
       });
       const nodes = new Map();
+      const lights = lighting ? (body.lights ?? []).map(authored => {
+        const light = scene.CreateLight(); light.SetType(authored.type);
+        light.SetDiffuseColor(new Color(...authored.diffuse.map(c => c/255))); light.SetSpecularColor(new Color(...authored.specular.map(c => c/255)));
+        light.SetDiffuseIntensity(authored.diffuse_intensity ?? 1); light.SetSpecularIntensity(authored.specular_intensity ?? 1);
+        light.SetRadius(authored.radius ?? 0); light.SetInnerAngle(authored.inner_angle ?? Deg(30)); light.SetOuterAngle(authored.outer_angle ?? Deg(45)); light.SetPriority(authored.priority ?? 0);
+        return light;
+      }) : [];
       for (const authored of body.nodes ?? []) {
         const node = scene.CreateNode(authored.name); nodes.set(authored.idx, node);
-        const [t, c, o] = authored.components;
+        const [t, c, o, l] = authored.components;
         if (!nullReference(t)) node.SetTransform(transforms[t]);
         if (!nullReference(c)) node.SetCamera(cameras[c]);
         if (!nullReference(o)) node.SetObject(objects[o]);
+        if (lighting && !nullReference(l)) node.SetLight(lights[l]);
         if (authored.disabled) node.Disable();
       }
       (body.transforms ?? []).forEach((t, i) => { if (!nullReference(t.parent)) transforms[i].SetParent(nodes.get(t.parent)); });

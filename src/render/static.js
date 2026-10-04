@@ -3,7 +3,8 @@ import {modelData, watchModel} from './models.js';
 import {imageData, watchImage} from './images.js';
 import {Color, Mat4, Mat44, ComputeAspectRatioX} from '../core/math.js';
 import {requireCondition, HarfangError} from '../core/errors.js';
-import {validateMaterial} from '../scene/schema.js';
+import {Material} from './materials.js';
+import {ForwardPrograms, applyMaterialState, frameLighting, transparentDepth} from './forward.js';
 import {profile} from '../profile.js';
 
 const vertexSource = `#version 300 es
@@ -30,6 +31,7 @@ uniform vec4 u_color;
 uniform sampler2D u_image;
 uniform bool u_textured;
 uniform bool u_tutorial;
+uniform bool u_alphaCut;
 out vec4 fragColor;
 void main() {
   if (u_tutorial) {
@@ -40,6 +42,7 @@ void main() {
     fragColor = min(vec4(vec3(mainLight) + vec3(0.75,0.85,1.0)*backLight + vec3(0.1,0.1,0.2), 1.0), vec4(1.0));
   } else {
     fragColor = u_color * (u_textured ? texture(u_image, v_uv) : vec4(1.0));
+    if (u_alphaCut && fragColor.a < 0.8) discard;
   }
 }`;
 
@@ -62,12 +65,14 @@ function makeProgram(gl) {
 export class StaticRenderer extends LineRenderer {
   #gl; #program; #uniforms; #meshes = new Map(); #textures = new Map();
   #gpuBytes = 0; #draws = 0; #triangles = 0; #disposed = false; #white;
+  #forward; #lighting = {names:Array(8).fill(null), active:0, omitted:0}; #transparentDraws = 0;
   constructor(canvas) {
     super(canvas);
     this.#gl = canvas.getContext('webgl2');
     try {
       this.#program = makeProgram(this.#gl);
-      this.#uniforms = Object.fromEntries(['mvp', 'world', 'color', 'image', 'textured', 'tutorial'].map(name => [name, this.#gl.getUniformLocation(this.#program, `u_${name}`)]));
+      this.#uniforms = Object.fromEntries(['mvp', 'world', 'color', 'image', 'textured', 'tutorial', 'alphaCut'].map(name => [name, this.#gl.getUniformLocation(this.#program, `u_${name}`)]));
+      this.#forward = new ForwardPrograms(this.#gl);
       const gl = this.#gl;
       this.#white = gl.createTexture(); requireCondition(this.#white, 'GPU_ALLOCATION_FAILED', 'Cannot allocate default texture');
       gl.bindTexture(gl.TEXTURE_2D, this.#white); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255,255,255,255]));
@@ -77,7 +82,7 @@ export class StaticRenderer extends LineRenderer {
   #alive() { requireCondition(!this.#disposed && !this.#gl.isContextLost(), this.#disposed ? 'DISPOSED' : 'CONTEXT_LOST', 'Static renderer is unavailable'); }
   #budget(bytes) { requireCondition(this.#gpuBytes + bytes <= profile.limits.maxGPUBytes, 'GPU_BUDGET', 'Static GPU byte budget exceeded'); }
   beginFrame(color = new Color(0.05, 0.06, 0.08), {clearColor = true, clearDepth = true} = {}) {
-    this.#alive(); this.#draws = this.#triangles = 0;
+    this.#alive(); this.#draws = this.#triangles = this.#transparentDraws = 0;
     super.beginFrame(color, {clearColor, clearDepth});
   }
   #mesh(model) {
@@ -96,7 +101,7 @@ export class StaticRenderer extends LineRenderer {
       requireCondition(entry.vao && entry.vertices && entry.indices, 'GPU_ALLOCATION_FAILED', 'Cannot allocate mesh buffers');
       gl.bindVertexArray(entry.vao); gl.bindBuffer(gl.ARRAY_BUFFER, entry.vertices); gl.bufferData(gl.ARRAY_BUFFER, data.vertices, gl.STATIC_DRAW);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, entry.indices); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, data.indices, gl.STATIC_DRAW);
-      [3,3,2].forEach((components, index) => { gl.enableVertexAttribArray(index); gl.vertexAttribPointer(index, components, gl.FLOAT, false, 32, [0,12,24][index]); });
+      (data.stride === 14 ? [3,3,2,3,3] : [3,3,2]).forEach((components, index) => { gl.enableVertexAttribArray(index); gl.vertexAttribPointer(index, components, gl.FLOAT, false, data.stride*4, [0,12,24,32,44][index]); });
       gl.bindVertexArray(null);
       requireCondition(gl.getError() === gl.NO_ERROR, 'GPU_UPLOAD_FAILED', 'Mesh upload failed');
       entry.release = release; entry.unwatch = watchModel(model, release);
@@ -122,27 +127,31 @@ export class StaticRenderer extends LineRenderer {
       entry.release = release; entry.unwatch = watchImage(picture, release); this.#textures.set(picture, entry); this.#gpuBytes += bytes; return texture;
     } catch (error) { release(); throw error; }
   }
-  drawModel(model, program = 'shaders/mdl', world = Mat4.Identity, viewProjection = Mat44.Identity, materials) {
+  prepareMaterials(materials) { this.#alive(); for (const material of materials) this.#forward.prepare(material); }
+  drawModel(model, program = 'shaders/mdl', world = Mat4.Identity, viewProjection = Mat44.Identity, materials, {frame, submeshIndex} = {}) {
     this.#alive();
     requireCondition(profile.modelPrograms.includes(program), 'UNSUPPORTED_PROGRAM', 'Unknown static program', program);
     requireCondition(world instanceof Mat4 && viewProjection instanceof Mat44, 'INVALID_ARGUMENT', 'Model needs Mat4 world and Mat44 view/projection');
+    requireCondition(materials === undefined || (Array.isArray(materials) && materials.every(material => material instanceof Material)),
+      'INVALID_MATERIAL','Drawing requires validated Material instances');
     const gl = this.#gl, data = modelData(model), gpu = this.#mesh(model), u = this.#uniforms;
-    gl.useProgram(this.#program); gl.bindVertexArray(gpu.vao);
-    gl.uniformMatrix4fv(u.mvp, false, viewProjection.mul(new Mat44(world)).toArray()); gl.uniformMatrix4fv(u.world, false, world.toArray());
-    gl.uniform1i(u.image, 0); gl.uniform1i(u.tutorial, program === 'shaders/mdl'); gl.activeTexture(gl.TEXTURE0);
-    for (const submesh of data.submeshes) {
+    gl.bindVertexArray(gpu.vao);
+    const mvp = viewProjection.mul(new Mat44(world)).toArray();
+    for (const submesh of submeshIndex === undefined ? data.submeshes : [data.submeshes[submeshIndex]]) {
       const material = materials?.[submesh.material] ?? (program === 'shaders/mdl' ? {source: {face_culling: 'cw'}} : undefined);
       requireCondition(material, 'INVALID_MATERIAL_SLOT', `Missing material ${submesh.material}`);
       const state = material.source;
-      const cull = state.face_culling ?? 'cw';
-      if (cull === 'disabled') gl.disable(gl.CULL_FACE);
-      else { gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK); gl.frontFace(cull === 'cw' ? gl.CCW : gl.CW); }
-      const depth = state.depth_test ?? 'less';
-      if (depth === 'disabled') gl.disable(gl.DEPTH_TEST);
-      else { gl.enable(gl.DEPTH_TEST); gl.depthFunc(depth === 'leq' ? gl.LEQUAL : depth === 'always' ? gl.ALWAYS : gl.LESS); }
-      gl.depthMask(state.write_z ?? true); gl.colorMask(...['r','g','b','a'].map(c => state[`write_${c}`] ?? true)); gl.disable(gl.BLEND);
-      gl.uniform4fv(u.color, material.color ?? [1,1,1,1]); gl.uniform1i(u.textured, !!material.picture);
-      gl.bindTexture(gl.TEXTURE_2D, material.picture ? this.prepareTexture(material.picture) : this.#white);
+      applyMaterialState(gl, material.diagnostic ? {...state,blend_mode:'opaque'} : state);
+      if (material instanceof Material && material.family !== 'unlit') {
+        requireCondition(!material.texture('uNormalMap') || model.hasTangents, 'MISSING_TANGENTS', 'Normal mapping requires compiled tangent frames');
+        this.#forward.bind(material,world,mvp,frame,picture => picture ? this.prepareTexture(picture) : this.#white);
+      } else {
+        gl.useProgram(this.#program); gl.uniformMatrix4fv(u.mvp,false,mvp); gl.uniformMatrix4fv(u.world,false,world.toArray());
+        gl.uniform1i(u.image,0); gl.uniform1i(u.tutorial,program === 'shaders/mdl'); gl.activeTexture(gl.TEXTURE0);
+        gl.uniform1i(u.alphaCut,!material.diagnostic && (state.flags?.includes('EnableAlphaCut') ?? false));
+        gl.uniform4fv(u.color,material.color ?? [1,1,1,1]); gl.uniform1i(u.textured,!!material.picture);
+        gl.bindTexture(gl.TEXTURE_2D,material.picture ? this.prepareTexture(material.picture) : this.#white);
+      }
       gl.drawElements(gl.TRIANGLES, submesh.indexCount, gpu.indexType, submesh.firstIndex * gpu.indexSize);
       ++this.#draws; this.#triangles += submesh.indexCount / 3;
     }
@@ -151,17 +160,28 @@ export class StaticRenderer extends LineRenderer {
   submit(scene) {
     this.#alive();
     const camera = scene.GetCurrentCamera(); requireCondition(camera.IsValid() && camera.IsEnabled(), 'INVALID_CAMERA', 'Scene has no enabled current camera');
-    const {viewProjection} = scene.ComputeCurrentCameraViewState(ComputeAspectRatioX(this.canvas.width, this.canvas.height));
+    const {viewProjection,view} = scene.ComputeCurrentCameraViewState(ComputeAspectRatioX(this.canvas.width, this.canvas.height));
+    const frame = frameLighting(scene,view); this.#lighting = frame.lights;
     this.beginFrame(scene.canvas.color, {clearColor: scene.canvas.clear_color, clearDepth: scene.canvas.clear_z});
+    const opaque = [], transparent = [];
     for (const node of scene.GetNodes()) {
       if (!node.IsEnabled()) continue;
       const object = node.GetObject(); if (!object.IsValid()) continue;
       const materials = Array.from({length: object.GetMaterialCount()}, (_, i) => object.GetMaterial(i));
-      this.drawModel(object.GetModelRef(), 'shaders/unlit.hps', node.GetTransform().GetWorld(), viewProjection, materials);
+      const model = object.GetModelRef(), world = node.GetTransform().GetWorld(), worldView = view.mul(world);
+      modelData(model).submeshes.forEach((submesh,submeshIndex) => {
+        const material = materials[submesh.material], command = {model,world,materials,submeshIndex};
+        if (!material.diagnostic && (material.source.blend_mode ?? 'opaque') !== 'opaque') {
+          command.depth = transparentDepth(submesh.bounds,worldView); transparent.push(command);
+        } else opaque.push(command);
+      });
     }
+    transparent.sort((a,b) => b.depth-a.depth); this.#transparentDraws = transparent.length;
+    for (const {model,world,materials,submeshIndex} of [...opaque,...transparent]) this.drawModel(model,'shaders/unlit.hps',world,viewProjection,materials,{frame,submeshIndex});
   }
   get stats() { return {...super.stats, meshDrawCalls: this.#draws, triangles: this.#triangles, meshes: this.#meshes.size,
-    textures: this.#textures.size, staticPrograms: this.#program ? 1 : 0, gpuStaticBytes: this.#gpuBytes}; }
+    textures: this.#textures.size, staticPrograms: this.#program ? 1 : 0, gpuStaticBytes: this.#gpuBytes,
+    ...this.#forward?.stats, selectedLights:this.#lighting.names.slice(), activeLights:this.#lighting.active, omittedLights:this.#lighting.omitted, transparentDraws:this.#transparentDraws}; }
   dispose() {
     if (this.#disposed) return;
     this.#disposed = true;
@@ -169,13 +189,12 @@ export class StaticRenderer extends LineRenderer {
     for (const entry of [...this.#textures.values()]) entry.release();
     if (this.#program) this.#gl.deleteProgram(this.#program);
     if (this.#white) this.#gl.deleteTexture(this.#white);
+    this.#forward?.dispose();
     this.#program = undefined; super.dispose();
   }
 }
 
 export function createUnlitMaterial(source, picture, {structure = false} = {}) {
-  validateMaterial(source, {structure});
-  const diagnostic = source.program === 'core/shader/pbr.hps';
-  const uniform = (source.values ?? []).find(v => v.name === (diagnostic ? 'uBaseOpacityColor' : 'uColor'));
-  return {source: structuredClone(source), color: uniform?.value.slice() ?? [1,1,1,1], picture: diagnostic ? undefined : picture, diagnostic};
+  requireCondition(source.program === 'shaders/unlit.hps' || structure, 'UNSUPPORTED_PROGRAM', 'Use createMaterial for forward materials');
+  return new Material(source,picture ? new Map([['uColorMap',picture]]) : new Map(),{structure});
 }

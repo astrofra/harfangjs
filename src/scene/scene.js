@@ -2,6 +2,7 @@ import {HandlePool} from '../core/handles.js';
 import {requireCondition, finite, integer} from '../core/errors.js';
 import {Vec3, Color, Deg, Mat4, Mat44, Inverse, TransformationMat4, FovToZoomFactor, ComputePerspectiveProjectionMatrix, ComputeOrthographicProjectionMatrix} from '../core/math.js';
 import {profile} from '../profile.js';
+import {Material} from '../render/materials.js';
 
 const handles = new WeakMap();
 const destructionObservers = new WeakMap();
@@ -92,6 +93,8 @@ export class Node extends Handle {
   SetCamera(camera) { const v = value(this); v.camera = token(camera, v.cameras); }
   GetObject() { const v = value(this); return new ObjectComponent(v.objects, v.object); }
   SetObject(object) { const v = value(this); v.object = token(object, v.objects); }
+  GetLight() { const v = value(this); return new Light(v.lights, v.light); }
+  SetLight(light) { const v = value(this); v.light = token(light,v.lights); }
   IsEnabled() { return value(this).enabled; }
   IsItselfEnabled() { return this.IsEnabled(); }
   Enable() { value(this).enabled = true; }
@@ -118,21 +121,47 @@ export class ObjectComponent extends Handle {
   GetMaterialName(index) { const v = value(this); integer(index, 0, v.materials.length - 1, 'material index'); return v.names[index] ?? ''; }
   SetMaterialName(index, name) { const v = value(this); integer(index, 0, v.materials.length - 1, 'material index'); requireCondition(typeof name === 'string', 'INVALID_ARGUMENT', 'Expected material name'); v.names[index] = name; }
 }
+export const LT_Linear = 'linear', LT_Point = 'point', LT_Spot = 'spot';
+export class Light extends Handle {
+  GetType() { return value(this).type; }
+  SetType(type) { requireCondition([LT_Linear,LT_Point,LT_Spot].includes(type),'INVALID_LIGHT','Unknown light type'); value(this).type = type; }
+  GetDiffuseColor() { return new Color(...value(this).diffuse.data); }
+  SetDiffuseColor(color) { requireLightColor(color); value(this).diffuse = new Color(...color.data); }
+  GetSpecularColor() { return new Color(...value(this).specular.data); }
+  SetSpecularColor(color) { requireLightColor(color); value(this).specular = new Color(...color.data); }
+  GetDiffuseIntensity() { return value(this).diffuseIntensity; }
+  SetDiffuseIntensity(n) { value(this).diffuseIntensity = positiveLight(n); }
+  GetSpecularIntensity() { return value(this).specularIntensity; }
+  SetSpecularIntensity(n) { value(this).specularIntensity = positiveLight(n); }
+  GetRadius() { return value(this).radius; }
+  SetRadius(n) { value(this).radius = positiveLight(n); }
+  GetInnerAngle() { return value(this).inner; }
+  SetInnerAngle(n) { requireCondition(finite(n) >= 0 && n <= Math.PI/2,'INVALID_LIGHT','Invalid inner angle'); value(this).inner = n; }
+  GetOuterAngle() { return value(this).outer; }
+  SetOuterAngle(n) { requireCondition(finite(n) >= 0 && n <= Math.PI/2,'INVALID_LIGHT','Invalid outer angle'); value(this).outer = n; }
+  GetPriority() { return value(this).priority; }
+  SetPriority(n) { value(this).priority = lightFloat(n); }
+}
+function lightFloat(n) { const value = Math.fround(finite(n)); requireCondition(Number.isFinite(value),'INVALID_LIGHT','Light value exceeds float32 range'); return value; }
+function positiveLight(n) { const value = lightFloat(n); requireCondition(value >= 0,'INVALID_LIGHT','Expected a nonnegative light value'); return value; }
+function requireLightColor(color) { requireCondition(color instanceof Color && color.data.every(n => Number.isFinite(n) && n >= 0),'INVALID_LIGHT','Expected a nonnegative Color'); }
 export class Scene {
   #nodes = new HandlePool();
   #transforms = new HandlePool();
   #cameras = new HandlePool(); #objects = new HandlePool(); #currentCamera;
+  #lights = new HandlePool();
   #owned = [];
   #order = [];
   #disposed = false;
   canvas = {clear_color: true, clear_z: true, color: new Color(0.05, 0.06, 0.08)};
   metadata = {};
+  environment = {ambient:Color.Black, fog_near:0, fog_far:0, fog_color:Color.Black};
   #assertAlive() { requireCondition(!this.#disposed, 'DISPOSED', 'Scene is disposed'); }
   CreateNode(name = '') {
     this.#assertAlive();
     requireCondition(typeof name === 'string', 'INVALID_ARGUMENT', 'Expected node name');
     requireCondition(this.#nodes.size < profile.limits.maxNodes, 'RESOURCE_BUDGET', 'Scene node budget exceeded');
-    const ref = this.#nodes.allocate({name, transforms: this.#transforms, cameras: this.#cameras, objects: this.#objects, transform: undefined, enabled: true});
+    const ref = this.#nodes.allocate({name, transforms: this.#transforms, cameras: this.#cameras, objects: this.#objects, lights:this.#lights, transform: undefined, enabled: true});
     this.#order.push(ref);
     return new Node(this.#nodes, ref);
   }
@@ -180,18 +209,26 @@ export class Scene {
   CreateObject(model, materials) {
     this.#assertAlive();
     requireCondition(model?.IsValid() && Array.isArray(materials) && materials.length > 0, 'INVALID_OBJECT', 'Valid model and materials required');
+    requireCondition(materials.every(material => material instanceof Material),'INVALID_MATERIAL','Objects require validated Material instances');
     for (const submesh of model.submeshes) requireCondition(submesh.material < materials.length, 'INVALID_MATERIAL_SLOT', 'Model references a missing material slot');
     return new ObjectComponent(this.#objects, this.#objects.allocate({model, materials: [...materials], names: []}));
   }
   DestroyObject(object) { this.#objects.release(token(object, this.#objects)); }
+  CreateLight() {
+    this.#assertAlive();
+    return new Light(this.#lights,this.#lights.allocate({type:LT_Point,diffuse:Color.White,specular:Color.White,
+      diffuseIntensity:1,specularIntensity:1,radius:0,inner:Deg(30),outer:Deg(45),priority:0}));
+  }
+  DestroyLight(light) { this.#lights.release(token(light,this.#lights)); }
+  GetLights() { return this.GetNodes().filter(node => node.GetLight().IsValid()); }
   own(resource) { this.#assertAlive(); this.#owned.push(resource); return resource; }
-  get stats() { return {nodes: this.#nodes.size, transforms: this.#transforms.size, cameras: this.#cameras.size, objects: this.#objects.size}; }
+  get stats() { return {nodes: this.#nodes.size, transforms: this.#transforms.size, cameras: this.#cameras.size, objects: this.#objects.size, lights:this.#lights.size}; }
   dispose() {
     if (this.#disposed) return;
     this.#disposed = true;
     const errors = [];
     for (const ref of [...this.#order]) { try { notifyDestruction(ref); } catch (e) { errors.push(e); } }
-    this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#order.length = 0;
+    this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#lights.dispose(); this.#order.length = 0;
     for (const owned of this.#owned.splice(0).reverse()) { try { owned.dispose(); } catch (e) { errors.push(e); } }
     if (errors.length) throw new AggregateError(errors, 'Scene destruction callback failed');
   }

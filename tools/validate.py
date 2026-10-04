@@ -3,6 +3,7 @@ import argparse
 import base64
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -32,7 +33,7 @@ def main():
     parser.add_argument('--browser', help='Path to Chrome, Edge or Chromium executable')
     parser.add_argument('--source', action='store_true', help='Test source instead of building/testing dist')
     parser.add_argument('--assets', type=Path, help='Use existing compiled web assets for the package')
-    parser.add_argument('--native-render', action='store_true', help='Also capture the native compiled room with hidden OpenGL and compare both cameras')
+    parser.add_argument('--native-render', action='store_true', help='Also compare room, material gallery, fog and PBR through hidden native OpenGL')
     args = parser.parse_args()
     try:
         from playwright.sync_api import sync_playwright
@@ -50,6 +51,10 @@ def main():
         capture = subprocess.run([str(ROOT / 'build/native/Release/harfang_web_asset_bridge.exe'), 'capture-room',
                                   str(ROOT / 'build/assets-native'), str(destination / 'native-room')], capture_output=True, text=True)
         (destination / 'native-render.log').write_text(capture.stdout + capture.stderr, encoding='utf-8')
+        capture.check_returncode()
+        capture = subprocess.run([str(ROOT / 'build/native/Release/harfang_web_asset_bridge.exe'), 'capture-lighting',
+                                  str(ROOT / 'build/assets-native'), str(destination / 'native-w2')], capture_output=True, text=True)
+        (destination / 'native-lighting-render.log').write_text(capture.stdout + capture.stderr, encoding='utf-8')
         capture.check_returncode()
     httpd = server(directory, 0)
     worker = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -70,11 +75,14 @@ def main():
             page.goto(f'{origin}/tests/')
             page.wait_for_function('window.testResults !== undefined', timeout=30000)
             report = page.evaluate('window.testResults')
-            report['offlineCompiler'] = {'status':'pass','cases':7}
+            compiler_count = int(re.search(r'Ran (\d+) tests',compiler_tests.stdout + compiler_tests.stderr).group(1))
+            report['offlineCompiler'] = {'status':'pass','cases':compiler_count}
             if args.native_render:
                 comparisons = {}
-                for camera, case in [('Perspective','scene_static_room'), ('Orthographic','scene_static_room.orthographic')]:
-                    native_png = base64.b64encode((destination / f'native-room-{camera}.png').read_bytes()).decode()
+                for camera, case in [('Perspective','scene_static_room'), ('Orthographic','scene_static_room.orthographic'),
+                                     ('lighting','material_lighting'),('lighting-fog','material_lighting.fog'),('pbr-ambient','scene_pbr.materials')]:
+                    prefix = 'native-room' if camera in ('Perspective','Orthographic') else 'native-w2'
+                    native_png = base64.b64encode((destination / f'{prefix}-{camera}.png').read_bytes()).decode()
                     comparisons[camera] = page.evaluate('''async ({native, caseId}) => {
                       async function pixels(src) {
                         const img = new Image(); img.src = src; await img.decode();
@@ -91,9 +99,17 @@ def main():
                       }
                       return {meanAbsoluteChannelError:sum/(a.length*.75), fractionPixelsOver16:different/(a.length/4)};
                     }''', {'native':'data:image/png;base64,' + native_png, 'caseId':case})
-                    assert comparisons[camera]['meanAbsoluteChannelError'] < 2 and comparisons[camera]['fractionPixelsOver16'] < .03, comparisons[camera]
-                report['nativeRoomRendering'] = {'status':'pass', 'backend':'Native C++ HARFANG / bgfx OpenGL', 'comparisons':comparisons,
+                    print(f'Native comparison {camera}: {comparisons[camera]}')
+                report['nativeRoomRendering'] = {'status':'pass', 'backend':'Native C++ HARFANG / bgfx OpenGL',
+                    'comparisons':{k:v for k,v in comparisons.items() if k in ('Perspective','Orthographic')},
                     'tolerance':{'meanAbsoluteChannelError':2,'fractionPixelsOver16':.03}, 'nativeJS':'pending-slice-N'}
+                report['nativeLightingRendering'] = {'status':'pass','backend':'Native C++ HARFANG / bgfx OpenGL',
+                    'comparisons':{k:v for k,v in comparisons.items() if k not in ('Perspective','Orthographic')},
+                    'tolerance':{'meanAbsoluteChannelError':2,'fractionPixelsOver16':.03},'nativeJS':'pending-slice-N',
+                    'adaptations':['No shadows or environment probes.','PBR tutorial RAW base-level bilinear sampling matches the W2 web profile.','Native PBR descriptor exposes its existing alpha-cut shader branch.']}
+                assert all(v['meanAbsoluteChannelError'] < 2 and v['fractionPixelsOver16'] < .03 for v in comparisons.values()), comparisons
+            report['lightingMetrics'] = page.evaluate('window.lightingMetrics')
+            report['lightingStartup'] = page.evaluate('window.lightingStartup')
             for name, data in page.evaluate('window.tutorialCaptures ?? {}').items():
                 (destination / f'{name}.png').write_bytes(base64.b64decode(data.split(',', 1)[1]))
             for result in report['results']:
@@ -139,6 +155,21 @@ def main():
             assert all(count == 0 for count in await_stop.values())
             assert page.evaluate('window.harfangDemo.runner.context.renderer.stats.gpuStaticBytes') == 0
             report['browserIntegration']['checks'] += ['room camera switch', 'room resize', 'room restart x3', 'room CPU/GPU cleanup']
+            page.goto(f'{origin}/examples/tutorials/?case=material_lighting')
+            page.wait_for_function('window.harfangDemo?.application.stats.steps > 1')
+            page.locator('canvas').focus(); page.keyboard.press('Space')
+            page.wait_for_function('window.harfangDemo.runner.context.renderer.stats.activeLights === 1')
+            for key, flag in [('f','fog'),('n','normalDisabled'),('r','rough')]:
+                page.keyboard.press(key); page.wait_for_function(f'window.harfangDemo.application.stats.{flag} === true')
+            for _ in range(3):
+                page.locator('#restart').click(); page.wait_for_function('window.harfangDemo.application.stats.steps > 1')
+            before = page.evaluate('window.harfangDemo.runner.context.renderer.stats')
+            assert before['forwardPrograms'] == 2 and before['activeLights'] == 4
+            await_stop = page.evaluate('async () => { await window.harfangDemo.runner.stop(); return window.harfangDemo.runner.context.assets.stats; }')
+            assert all(count == 0 for count in await_stop.values())
+            after = page.evaluate('window.harfangDemo.runner.context.renderer.stats')
+            assert after['gpuStaticBytes'] == 0 and after['forwardPrograms'] == 0
+            report['browserIntegration']['checks'] += ['W2 light rig', 'W2 fog/normal/roughness controls', 'W2 restart x3', 'W2 CPU/GPU/program cleanup']
             report['browserVersion'] = browser.version
             report['renderBackend'] = 'Chromium WebGL2 / ANGLE SwiftShader (software validation)'
             report['network'] = sorted(set(requests))

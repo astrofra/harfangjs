@@ -1,13 +1,13 @@
-# Portable foundation and static-scene contract
+# Portable foundation, scene and forward-rendering contract
 
-API `harfang-js/1`, profile `web-static/1`, asset schema `harfang-web-assets/1`. Earlier `web-foundation/1` manifests remain accepted.
-This is the C contract subset exercised by W0/W1. It does not advertise the future `web-lite/1` profile. Native facade enforcement and native JS execution remain N integration work.
+API `harfang-js/1`, profile `web-forward/1`, asset schema `harfang-web-assets/1`. Earlier `web-foundation/1` and `web-static/1` manifests remain accepted.
+This is the C contract subset exercised by W0/W1/W2. It does not advertise the future `web-lite/1` profile. Native facade enforcement and native JS execution remain N integration work.
 
 ## Source and module boundaries
 
 The source specs are in the sibling `harfang3d/specifications/` directory:
 
-- `SPECS_HYBRID_CPP_JS_WEBGL_DELIVERY_SLICES.md`, sections C, W0 and W1.
+- `SPECS_HYBRID_CPP_JS_WEBGL_DELIVERY_SLICES.md`, sections C, W0, W1 and W2.
 - `SPECS_HYBRID_CPP_JS_WEBGL_FEASIBILITY.md`, especially value semantics, scheduling and projection conventions.
 - `SPECS_HYBRID_CPP_JS_WEBGL_TUTORIAL_VALIDATION.md`.
 
@@ -47,7 +47,7 @@ W1 adds `Transform.GetParent/SetParent/ClearParent` with Node handles, cycle che
 
 Nodes expose `Get/SetCamera` and `Get/SetObject`. `Scene.CreateCamera()` preserves the native empty camera defaults (near .01, far 1000, FOV 40 degrees); the `(near,far,fov?)` overload defaults FOV to 45 degrees. `CreateOrthographicCamera(near,far,size=1)` supplies an orthographic component. `Camera` exposes near/far/FOV/size/orthographic getters and FOV/size setters. FOV arguments are radians. `SetCurrentCamera/GetCurrentCamera` use a camera Node; `ComputeCurrentCameraViewState(aspect)` returns `{view,proj,viewProjection}` and rejects singular camera transforms. Components are generation-checked and can be destroyed explicitly.
 
-`Scene.CreateObject(model, materials)` creates the implemented object subset; `ObjectComponent.GetModelRef/GetMaterialCount/GetMaterial/GetMaterialName/SetMaterialName` expose its assignments. Native model references and materials are adapted to JS resources/material descriptors, not native reference structs. Material descriptors are shared mutable JS values; this does not claim native material-update conformance. The scene loader preserves material slot names and core metadata. `Scene.own(resource)` registers synchronous disposal for scene-owned resources.
+`Scene.CreateObject(model, materials)` creates the implemented object subset; `ObjectComponent.GetModelRef/GetMaterialCount/GetMaterial/GetMaterialName/SetMaterialName` expose its assignments. Native model references and materials are adapted to JS resources and validated `Material` objects. Materials are shared mutable references; their source/value getters return copies. W2 tests material edits and texture/variant updates. The scene loader preserves material slot names and core metadata. `Scene.own(resource)` registers synchronous disposal for scene-owned resources.
 
 Get/change/set is required: mutating `transform.GetPos().x` changes only the returned value. Scene component setters also copy their inputs. Cross-scene component assignment and stale handles throw `INVALID_HANDLE`. Free-list reuse cannot revive a generation. Destroying a node does not implicitly destroy its transform, matching native `Scene::DestroyNode`; explicit transform destruction or scene disposal releases it. Behaviors detach while their node is still valid. Scene disposal invalidates all nodes/transforms and invokes every cleanup even if one callback fails.
 
@@ -93,4 +93,6 @@ W0 maps `shaders/white` and `shaders/pos_rgb` to reviewed GLSL ES 3.00 adapters 
 
 W1's unlit material supports one `uColor` vec4, optional stage-0 `uColorMap`, opaque output, `cw/ccw/disabled` culling, `less/leq/always/disabled` depth test, and per-channel/depth writes. Negative scale retains native winding behavior; it does not silently flip culling. Renderer counters add meshes, textures, static programs, triangles, mesh draws and static GPU bytes. Allocation errors fail explicitly; model/image disposal frees associated GPU allocations.
 
-Lights/shadows, instances, animation, skinning, audio and portable UI remain deferred. Physics, navigation, video, VR, AAA and Wasm remain excluded. Unknown required capabilities produce `UNSUPPORTED_CAPABILITY` with the application or logical asset source. Scene features outside W1 reject, including unknown fields, skinning and native script components. Only explicit `scene_pbr.structure` permits retained lighting/PBR metadata with opaque unlit diagnostic rendering; it never claims a W2 appearance pass. Public methods implement only documented overloads; the inventory does not promise native API completeness.
+W2 extends these materials/states, adds optional compiled tangent frames, and renders the default/PBR families through `submit(scene)`. Light components, eight-slot selection, fog, ambient lighting, material mutation, transparent sorting, and their exact API/parameter mappings are specified in [forward materials](forward-materials.md). Its two cached forward programs are reported separately from static and line programs.
+
+Shadows, environment probes, instances, animation, skinning, audio and portable UI remain deferred. Physics, navigation, video, VR, AAA and Wasm remain excluded. Unknown required capabilities produce `UNSUPPORTED_CAPABILITY` with the application or logical asset source. Required unsupported scene fields, skinning and native script components reject. Explicit `scene_pbr.structure` continues to mean opaque unlit diagnostic rendering; `scene_pbr.materials` is the separate W2 appearance gate. Public methods implement only documented overloads; the inventory does not promise native API completeness.

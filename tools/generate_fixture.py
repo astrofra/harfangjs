@@ -65,7 +65,7 @@ def generate(root: Path, bridge: Path, native_resources: Path):
                 key_values={'fixture':'W1 static room', 'units':'meters'})
     write_json(root / 'scenes/room.scn', body)
     shaders = root / 'shaders'; shaders.mkdir(exist_ok=True)
-    (shaders / 'unlit.hps').write_text('{"features":[]}\n', encoding='utf-8')
+    (shaders / 'unlit.hps').write_text('{"features":["OptionalAlphaCut"]}\n', encoding='utf-8')
     (shaders / 'unlit_vs.sc').write_text('''$input a_position, a_texcoord0
 $output vUV
 #include <bgfx_shader.sh>
@@ -78,6 +78,9 @@ SAMPLER2D(uColorMap, 0);
 void main() {
   vec4 color = uColor;
   color *= texture2D(uColorMap, vUV);
+#if ENABLE_ALPHA_CUT
+  if (color.a < 0.8) discard;
+#endif
   gl_FragColor = color;
 }
 ''', encoding='utf-8')

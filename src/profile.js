@@ -24,7 +24,7 @@ export const foundationProfile = freeze({
   nativeJS: 'pending-slice-N'
 });
 
-export const profile = freeze({...foundationProfile,
+export const staticProfile = freeze({...foundationProfile,
   id: 'web-static/1',
   capabilities: [...foundationProfile.capabilities, 'scene.static', 'scene.hierarchy', 'scene.camera', 'render.mesh', 'material.unlit', 'assets.images'],
   sceneComponents: ['node', 'transform', 'camera', 'object'],
@@ -36,6 +36,18 @@ export const profile = freeze({...foundationProfile,
   approximations: [...foundationProfile.approximations, 'Explicit scene_pbr.structure mode draws unlit diagnostic colors; no PBR, light or environment rendering is claimed.']
 });
 
+export const profile = freeze({...staticProfile,
+  id:'web-forward/1',
+  capabilities:[...staticProfile.capabilities,'scene.lights','material.default','material.pbr','material.alpha-cut','material.blend','render.forward','render.fog','render.ambient'],
+  sceneComponents:[...staticProfile.sceneComponents,'light'],
+  materialFamilies:['shaders/unlit.hps','core/shader/default.hps','core/shader/pbr.hps'],
+  modelPrograms:[...staticProfile.modelPrograms,'core/shader/default.hps','core/shader/pbr.hps'],
+  limits:{...staticProfile.limits, lights:8, maxForwardPrograms:2},
+  deferred:['shadows','environment-probes','instances','animation','skinning','audio','ui'],
+  approximations:[...staticProfile.approximations,'W2 environment lighting uses authored ambient color; probe maps require an explicit ambientEnvironment compiler adaptation.',
+    'Forward shader output matches native non-AAA gamma. Equal light priorities retain node order. Transparent submeshes sort by nearest bound depth, then node/submesh order.']
+});
+
 export function requireCapabilities(required, source = 'application') {
   requireCondition(Array.isArray(required), 'INVALID_PROFILE', 'requires must be an array', source);
   for (const capability of required) requireCondition(profile.capabilities.includes(capability),
@@ -43,7 +55,7 @@ export function requireCapabilities(required, source = 'application') {
 }
 
 export function validateManifest(manifest) {
-  requireCondition(manifest?.schema === profile.assetSchema && manifest.api === profile.api && [profile.id, foundationProfile.id].includes(manifest.profile),
+  requireCondition(manifest?.schema === profile.assetSchema && manifest.api === profile.api && [profile.id, staticProfile.id, foundationProfile.id].includes(manifest.profile),
     'INCOMPATIBLE_MANIFEST', `Expected ${profile.assetSchema}, ${profile.api}, ${profile.id}`, 'manifest');
   requireCapabilities(manifest.requires ?? [], 'manifest');
   requireCondition(manifest.assets && typeof manifest.assets === 'object' && !Array.isArray(manifest.assets),
@@ -53,7 +65,10 @@ export function validateManifest(manifest) {
     requireCondition(entry && ['bytes', 'scene-json', 'mesh', 'image'].includes(entry.kind), 'UNSUPPORTED_ASSET', 'Unsupported compiled asset kind', id);
     validateLogicalPath(entry.uri);
     if (entry.kind !== 'bytes') requireCondition(Number.isSafeInteger(entry.byteLength) && typeof entry.sha256 === 'string', 'INVALID_MANIFEST', 'Compiled content requires byte length and SHA-256', id);
-    if (entry.kind === 'scene-json') requireCondition(['static', 'structure'].includes(entry.mode), 'INVALID_MANIFEST', 'Unknown scene mode', id);
+    if (entry.kind === 'scene-json') requireCondition(['static', 'structure', 'forward'].includes(entry.mode), 'INVALID_MANIFEST', 'Unknown scene mode', id);
+    if (entry.lighting !== undefined) requireCondition(entry.mode === 'forward' && entry.lighting && typeof entry.lighting === 'object' && !Array.isArray(entry.lighting) &&
+      Object.entries(entry.lighting).every(([key,value]) => ['ignoreShadows','ambientEnvironment'].includes(key) && typeof value === 'boolean'),
+      'INVALID_MANIFEST', 'Invalid forward scene adaptations', id);
     if (entry.kind === 'image') requireCondition(['image/png', 'image/jpeg'].includes(entry.mime) &&
       [entry.width, entry.height].every(n => Number.isInteger(n) && n > 0 && n <= profile.limits.maxTextureSize) &&
       entry.colorSpace === 'encoded-rgb' && entry.sampler?.filter === 'linear' && entry.sampler?.wrap === 'repeat',

@@ -1,8 +1,9 @@
 import {requireCondition} from '../core/errors.js';
 import {profile, requireCapabilities, validateLogicalPath} from '../profile.js';
+import {materialContract} from '../render/material-contract.js';
 
 export const nullReference = value => value === null || value === undefined || value === 4294967295;
-export function validateSceneJSON(scene, {source = 'scene', structure = false} = {}) {
+export function validateSceneJSON(scene, {source = 'scene', structure = false, lighting = false, ignoreShadows = false, ambientEnvironment = false} = {}) {
   const check = (ok, message, path = '') => requireCondition(ok, 'INVALID_SCENE', message, `${source}${path}`);
   check(scene && typeof scene === 'object' && !Array.isArray(scene), 'Expected native JSON scene object');
   requireCapabilities(scene.requires ?? [], source);
@@ -17,7 +18,7 @@ export function validateSceneJSON(scene, {source = 'scene', structure = false} =
   for (const key of ['instances', 'anims', 'scene_anims', 'rigid_bodies', 'collisions', 'scripts', 'scene_scripts', 'videos']) {
     requireCondition(!scene[key]?.length, 'UNSUPPORTED_SCENE_FEATURE', `${key} is not implemented by W1`, source);
   }
-  requireCondition(structure || !scene.lights?.length, 'UNSUPPORTED_SCENE_FEATURE', 'Lighting requires W2 (or explicit structural diagnostic mode)', source);
+  requireCondition(lighting || structure || !scene.lights?.length, 'UNSUPPORTED_SCENE_FEATURE', 'Lighting requires a forward scene', source);
   const transforms = scene.transforms ?? [], cameras = scene.cameras ?? [], objects = scene.objects ?? [], nodes = scene.nodes ?? [];
   check(nodes.length <= profile.limits.maxNodes, 'Node budget exceeded');
   const ids = new Map();
@@ -32,9 +33,9 @@ export function validateSceneJSON(scene, {source = 'scene', structure = false} =
       const ref = node.components[slot];
       if (!nullReference(ref)) check(Number.isInteger(ref) && ref >= 0 && ref < list.length, `Invalid component reference at slot ${slot}`, path);
     });
-    requireCondition((structure || nullReference(node.components[3])) && nullReference(node.components[4]) && nullReference(node.instance) && !node.collisions?.length && !node.scripts?.length,
+    requireCondition((lighting || structure || nullReference(node.components[3])) && nullReference(node.components[4]) && nullReference(node.instance) && !node.collisions?.length && !node.scripts?.length,
       'UNSUPPORTED_SCENE_FEATURE', 'Required node component is outside W1', `${source}${path}`);
-    if (!nullReference(node.components[1]) || !nullReference(node.components[2])) check(!nullReference(node.components[0]), 'Camera/object node requires a transform', path);
+    if (!nullReference(node.components[1]) || !nullReference(node.components[2]) || !nullReference(node.components[3])) check(!nullReference(node.components[0]), 'Camera/object/light node requires a transform', path);
   });
   const vec = (v, count, path) => check(Array.isArray(v) && v.length === count && v.every(Number.isFinite), 'Invalid numeric vector', path);
   transforms.forEach((t, i) => {
@@ -62,8 +63,9 @@ export function validateSceneJSON(scene, {source = 'scene', structure = false} =
     validateLogicalPath(object.name);
     requireCondition(!object.bones?.length, 'UNSUPPORTED_SCENE_FEATURE', 'Skinning requires W7', `${source}.objects[${i}]`);
     check(Array.isArray(object.materials) && object.materials.length > 0, 'Object has no materials', `.objects[${i}]`);
-    for (let slot = 0; slot < object.materials.length; ++slot) validateMaterial(object.materials[slot], {source: `${source}.objects[${i}].materials[${slot}]`, structure});
+    for (let slot = 0; slot < object.materials.length; ++slot) validateMaterial(object.materials[slot], {source: `${source}.objects[${i}].materials[${slot}]`, structure, lighting});
   });
+  if (lighting) for (const [i, light] of (scene.lights ?? []).entries()) validateLight(light, {source:`${source}.lights[${i}]`, ignoreShadows});
   const current = scene.environment?.current_camera;
   if (!nullReference(current)) check(ids.has(current) && !nullReference(ids.get(current).components[1]), 'Invalid current camera');
   if (scene.canvas) {
@@ -72,35 +74,54 @@ export function validateSceneJSON(scene, {source = 'scene', structure = false} =
   }
   if (!structure) {
     const env = scene.environment ?? {};
-    requireCondition(!env.fog_far && !env.brdf_map && !env.irradiance_map && !env.radiance_map && !env.probe?.irradiance_map && !env.probe?.radiance_map,
-      'UNSUPPORTED_SCENE_FEATURE', 'Fog/environment lighting requires W2', source);
+    requireCondition(lighting || !env.fog_far, 'UNSUPPORTED_SCENE_FEATURE', 'Fog requires a forward scene', source);
+    requireCondition((lighting && ambientEnvironment) || (!env.brdf_map && !env.irradiance_map && !env.radiance_map && !env.probe?.irradiance_map && !env.probe?.radiance_map),
+      'UNSUPPORTED_SCENE_FEATURE', 'Environment maps require explicit ambientEnvironment approximation', source);
+    for (const key of ['ambient','fog_color']) if (env[key] !== undefined) vec(env[key],4,`.environment.${key}`);
+    const near = env.fog_near ?? 0, far = env.fog_far ?? 0;
+    check(Number.isFinite(near) && Number.isFinite(far) && (far === near || far > near), 'Invalid fog range');
   }
   check(scene.key_values == null || (typeof scene.key_values === 'object' && !Array.isArray(scene.key_values) && Object.values(scene.key_values).every(v => typeof v === 'string')), 'Invalid key_values metadata');
   return scene;
 }
 
-export function validateMaterial(material, {source = 'material', structure = false} = {}) {
+export function validateMaterial(material, {source = 'material', structure = false, lighting = true} = {}) {
   const diagnostic = structure && material?.program === 'core/shader/pbr.hps';
-  requireCondition(material?.program === 'shaders/unlit.hps' || diagnostic, 'UNSUPPORTED_PROGRAM', 'No W1 material adapter; PBR structure requires explicit diagnostic mode', source);
+  const family = Object.hasOwn(materialContract.families,material?.program) ? materialContract.families[material.program] : undefined;
+  requireCondition(family && (lighting || material.program === 'shaders/unlit.hps' || diagnostic), 'UNSUPPORTED_PROGRAM', 'No approved material adapter in this scene profile', source);
   const keys = ['program','values','textures','flags','face_culling','depth_test','blend_mode','write_r','write_g','write_b','write_a','write_z'];
   for (const key of Object.keys(material)) requireCondition(keys.includes(key), 'UNSUPPORTED_MATERIAL', `Unknown material field ${key}`, source);
   for (const key of ['values', 'textures', 'flags']) requireCondition(material[key] === undefined || Array.isArray(material[key]), 'INVALID_MATERIAL', `${key} must be an array`, source);
-  requireCondition(!material.flags?.length, 'UNSUPPORTED_MATERIAL', 'Material flags require a later slice', source);
-  requireCondition(diagnostic || (material.blend_mode ?? 'opaque') === 'opaque', 'UNSUPPORTED_MATERIAL', 'Only opaque W1 materials are supported', source);
-  requireCondition(['disabled', 'cw', 'ccw'].includes(material.face_culling ?? 'cw') && ['less', 'leq', 'always', 'disabled'].includes(material.depth_test ?? 'less'), 'UNSUPPORTED_MATERIAL', 'Unsupported depth/culling state', source);
+  requireCondition((material.flags ?? []).every(flag => lighting && family.flags.includes(flag)), 'UNSUPPORTED_MATERIAL', 'Unsupported material feature flag', source);
+  requireCondition(diagnostic || (lighting ? materialContract.blendModes.includes(material.blend_mode ?? 'opaque') : (material.blend_mode ?? 'opaque') === 'opaque'), 'UNSUPPORTED_MATERIAL', 'Unsupported blend mode', source);
+  requireCondition(materialContract.culling.includes(material.face_culling ?? 'cw') && materialContract.depthTests.includes(material.depth_test ?? 'less'), 'UNSUPPORTED_MATERIAL', 'Unsupported depth/culling state', source);
   for (const key of ['write_r', 'write_g', 'write_b', 'write_a', 'write_z']) requireCondition(material[key] === undefined || typeof material[key] === 'boolean', 'INVALID_MATERIAL', `${key} must be boolean`, source);
   const names = new Set(), samplers = new Set();
   for (const v of material.values ?? []) {
-    requireCondition(v.type === 'vec4' && (v.count ?? 1) === 1 && Array.isArray(v.value) && v.value.length === 4 && v.value.every(Number.isFinite), 'INVALID_MATERIAL', 'Expected one vec4 material value', source);
-    requireCondition(diagnostic || v.name === 'uColor', 'UNSUPPORTED_MATERIAL', `Unknown uniform ${v.name}`, source);
+    requireCondition(v?.type === 'vec4' && (v.count ?? 1) === 1 && Array.isArray(v.value) && v.value.length === 4 && v.value.every(n => Number.isFinite(n) && Number.isFinite(Math.fround(n))), 'INVALID_MATERIAL', 'Expected one finite float32 vec4 material value', source);
+    requireCondition(Object.hasOwn(family.values,v.name), 'UNSUPPORTED_MATERIAL', `Unknown uniform ${v.name}`, source);
     requireCondition(!names.has(v.name), 'INVALID_MATERIAL', `Duplicate uniform ${v.name}`, source); names.add(v.name);
   }
   for (const texture of material.textures ?? []) {
     requireCondition(texture && Object.keys(texture).every(k => ['name','path','stage'].includes(k)) &&
       typeof texture.name === 'string' && Number.isInteger(texture.stage) && texture.stage >= 0 && texture.stage < 16 &&
       !samplers.has(texture.name), 'INVALID_MATERIAL', 'Invalid/duplicate texture reference', source); samplers.add(texture.name);
-    requireCondition(diagnostic || (texture.name === 'uColorMap' && texture.stage === 0), 'UNSUPPORTED_MATERIAL', 'Only uColorMap at stage 0 is supported', source);
+    requireCondition(family.textures[texture.name] === texture.stage, 'UNSUPPORTED_MATERIAL', 'Unsupported sampler or stage', source);
     if (texture.path) validateLogicalPath(texture.path);
   }
   return material;
+}
+
+export function validateLight(light, {source = 'light', ignoreShadows = false} = {}) {
+  const check = (ok, message) => requireCondition(ok,'INVALID_LIGHT',message,source);
+  check(light && ['linear','point','spot'].includes(light.type), 'Unknown light type');
+  const keys = ['type','shadow_type','diffuse','specular','diffuse_intensity','specular_intensity','radius','inner_angle','outer_angle','priority','pssm_split','shadow_bias','shadow_near','shadow_far'];
+  for (const key of Object.keys(light)) check(keys.includes(key),`Unknown light field ${key}`);
+  requireCondition(!light.shadow_type || light.shadow_type === 'none' || (ignoreShadows && light.shadow_type === 'map'), 'UNSUPPORTED_SCENE_FEATURE', 'Shadow maps require W3 or an explicit ignoreShadows adaptation', source);
+  for (const key of ['diffuse','specular']) check(Array.isArray(light[key]) && light[key].length === 4 && light[key].every(n => Number.isFinite(n) && n >= 0), `Invalid ${key} color`);
+  for (const key of ['diffuse_intensity','specular_intensity','radius']) check(light[key] === undefined || (Number.isFinite(light[key]) && light[key] >= 0), `Invalid ${key}`);
+  check(light.priority === undefined || Number.isFinite(light.priority),'Invalid light priority');
+  const inner = light.inner_angle ?? Math.PI/6, outer = light.outer_angle ?? Math.PI/4;
+  check(Number.isFinite(inner) && Number.isFinite(outer) && inner >= 0 && outer >= inner && outer <= Math.PI/2, 'Invalid spot angles');
+  return light;
 }
