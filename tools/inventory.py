@@ -1,0 +1,119 @@
+"""Extract literal binding symbols and tutorial classifications from the local specs.
+
+This does not execute FABGen. Dynamic declarations are retained separately so the
+inventory does not claim expansion of generator loops or overload signatures.
+"""
+import argparse
+import ast
+import hashlib
+import json
+from pathlib import Path
+import re
+import subprocess
+
+ROOT = Path(__file__).resolve().parents[1]
+SUPPORTED = set('''Vec2 Vec3 Vec4 Color Mat4 Mat44 ColorI Deg Deg3 Dot Len Normalize Cross GetColumn GetT GetTranslation
+TranslationMat4 ScaleMat4 RotationMat4 TransformationMat4 Inverse ComputeAspectRatioX FovToZoomFactor
+ComputePerspectiveProjectionMatrix ComputeOrthographicProjectionMatrix ProjectToClipSpace ProjectToScreenSpace
+time_from_ns time_to_ns time_from_sec time_from_ms time_to_sec time_to_ms time_to_sec_f time_to_ms_f time_from_sec_f time_from_sec_d
+Scene Scene.CreateNode Scene.GetNode Scene.GetNodes Scene.GetNodeCount Scene.DestroyNode Scene.CreateTransform Scene.DestroyTransform
+Node Node.IsValid Node.GetName Node.SetName Node.GetTransform Node.SetTransform
+Transform Transform.IsValid Transform.GetPos Transform.SetPos Transform.GetRot Transform.SetRot Transform.GetScale Transform.SetScale
+Transform.GetPosRot Transform.SetPosRot Transform.GetWorld VertexLayout VertexLayout.Begin VertexLayout.Add VertexLayout.End
+Vertices Vertices.Clear Vertices.Begin Vertices.SetPos Vertices.SetColor0 Vertices.End'''.split())
+APPROXIMATE = set('''DrawLines LoadProgramFromFile Keyboard Mouse ReadKeyboard ReadMouse Keyboard.Down Keyboard.Pressed Keyboard.Released
+Mouse.X Mouse.Y Mouse.DtX Mouse.DtY Mouse.Wheel Mouse.Down Mouse.Pressed Mouse.Released'''.split())
+
+
+def extract(source):
+    binding = source / 'binding/bind_harfang.py'
+    data = binding.read_text(encoding='utf-8')
+    tree = ast.parse(data)
+    classes = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+            call = node.value
+            if isinstance(call.func, ast.Attribute) and call.func.attr == 'begin_class' and call.args and isinstance(call.args[0], ast.Constant):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        classes[target.id] = call.args[0].value.removeprefix('hg::').removeprefix('bgfx::')
+    symbols, dynamic = {}, []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        method = node.func.attr
+        if method not in {'begin_class', 'bind_function', 'bind_function_overloads', 'bind_method', 'bind_method_overloads'}:
+            continue
+        idx = 1 if method.startswith('bind_method') else 0
+        if len(node.args) <= idx:
+            continue
+        name_node = next((k.value for k in node.keywords if k.arg == 'bound_name'), node.args[idx])
+        if not isinstance(name_node, ast.Constant) or not isinstance(name_node.value, str):
+            dynamic.append(dict(line=node.lineno, expression=ast.get_source_segment(data, node), classification='unsupported'))
+            continue
+        name = name_node.value.removeprefix('hg::').removeprefix('bgfx::')
+        if idx:
+            variable = node.args[0].id if isinstance(node.args[0], ast.Name) else ''
+            name = f'{classes.get(variable, variable)}.{name}'
+        classification = 'portable' if name in SUPPORTED else 'approximation' if name in APPROXIMATE else 'unsupported'
+        if classification == 'unsupported' and re.search(r'Lua|Squirrel|ImGui|Window|Monitor|OpenFile|Directory|Process|Plugin', name):
+            classification = 'native-only'
+        record = symbols.setdefault(name, dict(symbol=name, classification=classification, lines=[]))
+        record['lines'].append(node.lineno)
+        if classification == 'portable':
+            record['scope'] = 'Only documented W0 overloads; native JS pending N'
+        elif classification == 'approximation':
+            record['scope'] = 'Context service adaptation; not exported as an unchanged native function'
+    revision = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
+    result = dict(source='harfang3d/binding/bind_harfang.py', sourceRevision=revision,
+                  sourceSHA256=hashlib.sha256(binding.read_bytes()).hexdigest(),
+                  extraction='Literal class/function/method names; dynamic declarations listed unexpanded. Constants, constructors, operators and members are described in docs/contract.md.',
+                  symbols=sorted(symbols.values(), key=lambda r: r['symbol']), dynamicDeclarations=dynamic)
+    (ROOT / 'contract').mkdir(exist_ok=True)
+    (ROOT / 'contract/binding-inventory.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+    return revision
+
+
+def tutorials(source, revision):
+    spec = (source / 'specifications/SPECS_HYBRID_CPP_JS_WEBGL_TUTORIAL_VALIDATION.md').read_text(encoding='utf-8')
+    rows, classification = [], None
+    w0 = {'basic_loop', 'input_read_keyboard_basic', 'input_read_keyboard_advanced', 'input_read_mouse_basic',
+          'input_read_mouse_advanced', 'draw_lines', 'draw_lines_starfield', 'scene_lua_script'}
+    for line in spec.splitlines():
+        for section, label in [('## 3.', 'retained'), ('## 4.', 'deferred'), ('## 5.', 'excluded')]:
+            if line.startswith(section): classification = label
+        if line.startswith('## 6.'): break
+        match = re.match(r'\| \[([^]]+)\]\(\.\./tutorials/([^)]*)\) \| (.*)', line)
+        if not match or not classification: continue
+        family, filename, description = match.groups()
+        case_id = 'scene_lua_script.js' if family == 'scene_lua_script' else family
+        ported = family in w0
+        rows.append(dict(sourceFamily=family, sourceRevision=revision,
+            sourceSHA256=hashlib.sha256((source / 'tutorials' / filename).read_bytes()).hexdigest(),
+            caseId=case_id, classification=classification, slice='C/W0' if ported else description.split('|')[0].strip(),
+            requires=['render.lines'] if ported else [],
+            adaptations=['Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop.'] if ported else [],
+            assetRecipe='Built-in reviewed line programs and static behavior module; no scene assets.' if ported else 'Pending applicable slice.',
+            seed=1337 if family == 'draw_lines_starfield' else None,
+            checkpoints=[0, 16, 32, 48] if ported else [], assertions=description.rstrip(' |'),
+            visualTolerance='Feature/pixel-region checks; no pixel parity claim.' if ported else None,
+            executionStatus={'nativeOriginal': 'not-run', 'nativeJS': 'not-ported', 'browser': 'not-run' if ported else 'not-ported'}))
+    assert len(rows) == 56, len(rows)
+    counts = {key: sum(row['classification'] == key for row in rows) for key in ['retained', 'deferred', 'excluded']}
+    assert counts == {'retained': 25, 'deferred': 12, 'excluded': 19}, counts
+    rows.append(dict(sourceFamily='render_resize_to_window', sourceRevision=revision, caseId='render_resize_to_window.lines',
+        classification='retained-derivative', slice='W0', requires=['render.lines', 'math.foundation'],
+        adaptations=['Replace W1 models with dynamic lines; verify orthographic aspect and drawing-buffer resize.'],
+        assetRecipe='No source asset access.', seed=None, checkpoints=[0, 16, 32, 48],
+        assertions='Canvas resize updates projection and dimensions.', visualTolerance='Aspect/numeric checks.',
+        executionStatus={'nativeOriginal': 'not-run', 'nativeJS': 'not-ported', 'browser': 'not-run'}))
+    (ROOT / 'contract/tutorials.json').write_text(json.dumps(dict(familyCounts=counts, cases=rows), indent=2) + '\n', encoding='utf-8')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source', type=Path, default=ROOT.parent / 'harfang3d')
+    args = parser.parse_args()
+    revision = extract(args.source)
+    tutorials(args.source, revision)
+    print('Generated binding and 56-family tutorial inventories; execution remains separately reported.')

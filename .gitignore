@@ -1,0 +1,7 @@
+.venv/
+build/
+dist/
+__pycache__/
+node_modules/
+/commit_with_llm.py
+/commit_with_llm.bat

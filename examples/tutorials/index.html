@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HARFANG JS — C / W0 tutorials</title>
+<link rel="icon" href="data:,">
+<script type="importmap">{"imports":{"harfang":"../../src/index.js","harfang/browser":"../../src/browser.js"}}</script>
+<style>
+  :root { color-scheme: dark; font: 15px system-ui,sans-serif; background:#14191d; color:#e8edef; }
+  body { margin:0; padding:24px; }
+  h1 { font-size:24px; margin:0 0 8px; }
+  p { color:#bbc9ce; } a { color:#9bd7de; }
+  nav { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:20px 0; }
+  select,button { font:inherit; padding:8px 12px; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; }
+  canvas { display:block; width:100%; height:65vh; background:black; outline:1px solid #43535c; }
+  canvas:focus { outline:2px solid #7dd3df; }
+  pre { margin:0; font:12px/1.5 monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+  @media (max-width:850px) { main { grid-template-columns:1fr; } }
+</style>
+<h1>HARFANG JS / browser foundations</h1>
+<p>Shared JavaScript tutorial ports · WebGL 2 · profile <code>web-foundation/1</code></p>
+<nav><label>Tutorial <select aria-label="Tutorial"></select></label><button id="pause">Pause / resume</button><button id="restart">Restart</button><a href="../../tests/index.html">Conformance tests</a></nav>
+<main><canvas aria-label="HARFANG rendering and input surface"></canvas><pre id="status" aria-live="off">Initializing…</pre></main>
+<p>Click the canvas to use keyboard and mouse input. Escape stops the application. Resize the window to resize the drawing buffer.</p>
+<p>Static scene loading, materials, audio and native QuickJS execution belong to later slices.</p>
+<script type="module" src="./browser-main.js"></script>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "harfang",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HARFANG portable contract and pure JavaScript WebGL 2 foundations",
+  "exports": {".": "./src/index.js", "./browser": "./src/browser.js"},
+  "scripts": {
+    "build": "python tools/build.py",
+    "test": "python tools/validate.py",
+    "start": "python tools/serve.py"
+  },
+  "license": "GPL-3.0-only"
+}

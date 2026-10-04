@@ -1,0 +1,1230 @@
+{
+  "familyCounts": {
+    "retained": 25,
+    "deferred": 12,
+    "excluded": 19
+  },
+  "cases": [
+    {
+      "sourceFamily": "basic_loop",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "df97fedcc60a789fb2328ebb88aa5000a9a0990e20f3af6078816a8dd4b18bc7",
+      "caseId": "basic_loop",
+      "classification": "retained",
+      "slice": "C/W0",
+      "requires": [
+        "render.lines"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "Built-in reviewed line programs and static behavior module; no scene assets.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "W0 | Visible clear color, frame progression, input/stop handling, explicit desktop loop, clean disposal",
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "render_resize_to_window",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "166d0fa8d3f7890d3bfe6ac723e751abd764c940cbaf6053a0e074a1c5af25d7",
+      "caseId": "render_resize_to_window",
+      "classification": "retained",
+      "slice": "W0-W1",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W0-W1 | Resize/projection agreement and correct drawing-buffer dimensions; native window and browser canvas use their own host mechanisms",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "input_read_keyboard_basic",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "faec57029eeaed0a94896f2e11d3215318b028dc42fc2e9a5f62a44c41a82621",
+      "caseId": "input_read_keyboard_basic",
+      "classification": "retained",
+      "slice": "C/W0",
+      "requires": [
+        "render.lines"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "Built-in reviewed line programs and static behavior module; no scene assets.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "W0 | Current key state for supported keys, focus behavior, orderly stop; replace the busy console loop with a scheduled sample",
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "input_read_keyboard_advanced",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "b0bc72b604800b59d5bf62725b6daf5342a346dd43156903db4efb41deaab273",
+      "caseId": "input_read_keyboard_advanced",
+      "classification": "retained",
+      "slice": "C/W0",
+      "requires": [
+        "render.lines"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "Built-in reviewed line programs and static behavior module; no scene assets.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "W0 | Pressed/down/released transitions, no repeated one-shot events, focus-loss reset",
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "input_read_mouse_basic",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "9465915dfe53452ac8650fccc0a8da9d5ad3361d7815d519b3f27c91507c9cec",
+      "caseId": "input_read_mouse_basic",
+      "classification": "retained",
+      "slice": "C/W0",
+      "requires": [
+        "render.lines"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "Built-in reviewed line programs and static behavior module; no scene assets.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "W0 | Supported buttons and pointer coordinates relative to the application surface",
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "input_read_mouse_advanced",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "5f58e1e45399ff6ceaf75fb2e480253eb884ae0236a65482bd0ce93736d06abd",
+      "caseId": "input_read_mouse_advanced",
+      "classification": "retained",
+      "slice": "C/W0",
+      "requires": [
+        "render.lines"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "Built-in reviewed line programs and static behavior module; no scene assets.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "W0 | Stateful transitions and deltas; explicitly document CSS-pixel/drawing-buffer conversion",
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "draw_lines",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "ea69e2cbca84ed1284825da502a4052968c8b8138270b657f0e1573d8b51c3e0",
+      "caseId": "draw_lines",
+      "classification": "retained",
+      "slice": "C/W0",
+      "requires": [
+        "render.lines"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "Built-in reviewed line programs and static behavior module; no scene assets.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "W0-W1 | Dynamic vertex upload, line drawing, color/clear behavior, correct time-based changes",
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "draw_lines_starfield",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "7c39b62c58c6620bf82844a02de75ac52cd5aebf5537cc99cd234e6c83558cc3",
+      "caseId": "draw_lines_starfield",
+      "classification": "retained",
+      "slice": "C/W0",
+      "requires": [
+        "render.lines"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "Built-in reviewed line programs and static behavior module; no scene assets.",
+      "seed": 1337,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "W0/W10 | Colored dynamic lines and repeatable motion; seed random generation and record actual vertex count",
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "draw_model_no_pipeline",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "da29ad117ace4144ead73a1d11e25af3b061261b35e3fa033bb64980629b6e25",
+      "caseId": "draw_model_no_pipeline",
+      "classification": "retained",
+      "slice": "W1",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W1 | Cube/plane creation, explicit transforms, basic program/vertex-layout mapping, draw submission without a scene pipeline",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "filesystem_assets",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "412364028c39a7150fc276a9b358a0fa2bade6b2206c7cf97f510b90f95f1c8d",
+      "caseId": "filesystem_assets",
+      "classification": "retained",
+      "slice": "W1/W4",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W1/W4 | Resolve `pictures/owl.jpg` through the compiled asset namespace and report a valid texture with correct dimensions; use an async resource API",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "picture_load",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "12322f993bb498f2f12529806ccb38099d6c2dda6653059fd22c3e521ab5f859",
+      "caseId": "picture_load",
+      "classification": "retained",
+      "slice": "W1/W4",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W1/W4 | Decode an ordinary image and report its dimensions; replace the source-folder filesystem path with a compiled logical asset ID",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_pbr",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "453c313b154b33c20c2f42033c1ea6e2a45165ebc573905140c9f2528a1030ae",
+      "caseId": "scene_pbr",
+      "classification": "retained",
+      "slice": "W1 then W2/W4",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W1 then W2/W4 | Load `materials/materials.scn`, preserve scene/camera/material assignment, then validate the PBR appearance and selected texture path",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "material_update_value",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "3dff71f5eb01c16a568ad522c728fcd94536c9d08c9a4b0105677f6d9502ff6d",
+      "caseId": "material_update_value",
+      "classification": "retained",
+      "slice": "W2/W4, W3 for original shadow setting",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W2/W4, W3 for original shadow setting | Despite its name, this example toggles `uDiffuseMap` and updates the material program variant; retain that on/off transition and resource validity",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_light_priority",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "672768ccf5e2c51620293580930b3e26b55e67cf99bdbf674c79b9ce35656295",
+      "caseId": "scene_light_priority",
+      "classification": "retained",
+      "slice": "W2",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W2 | Select among 16 moving point lights according to priority and available slots; compare selection as well as appearance",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_spot_shadow_clip",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "a1bc15fbc0db067bb47621ccf59d69e9f4cfffe5606188a903a1cf28986072f4",
+      "caseId": "scene_spot_shadow_clip",
+      "classification": "retained",
+      "slice": "W3, conditional on spot-shadow capability",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W3, conditional on spot-shadow capability | Preserve animated shadow near plane, fixed far plane, and caster exclusion; the diagnostic text may use a simple overlay",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_instances",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "375ae748a2d55904e9dbf45a219ae1fb2c58bbbdbf6439797b97971b904e740d",
+      "caseId": "scene_instances",
+      "classification": "retained",
+      "slice": "W5 then W6",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W5 then W6 | Independent subscene state, add/remove actors, instance-local animation lookup, idle/walk/run transitions; staged variants are defined below",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "mouse_scene_projection",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "b2b1b567b97cac13a6394811bb5a5feb170b568d1d02497600557c0fa4557c65",
+      "caseId": "mouse_scene_projection",
+      "classification": "retained",
+      "slice": "W0/W1/W2/W5",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W0/W1/W2/W5 | Unprojection and world-space targeting; the loaded scene itself references a nested `target_rectangle.scn` instance",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "game_mouse_flight",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "22ef082ca92b4e81aeea84e4287cd342e18a1ce8e90f15f0aec0ca9ea78356f6",
+      "caseId": "game_mouse_flight",
+      "classification": "retained",
+      "slice": "W5/W10, with W0-W2",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W5/W10, with W0-W2 | Input-controlled paper-plane instance, chase camera, transform math, and line overlay; this is kinematic JS behavior, not a physics tutorial",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_lua_script",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "5c73f099332fc3d0b10572e49816d57cf7f7a119d87e8be53d70c5e00d12bbe7",
+      "caseId": "scene_lua_script.js",
+      "classification": "retained",
+      "slice": "C/W0",
+      "requires": [
+        "render.lines"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "Built-in reviewed line programs and static behavior module; no scene assets.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "C/N/W0 | Rework as a JS behavior-communication scenario: read/write state, invoke functions with arguments/handles, return values, missing-call errors; do not embed Lua",
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "scene_many_nodes",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "ff57d8ed10887f5780984c8607a6c01621fb097d8983cab37eaab3dcc6467acd",
+      "caseId": "scene_many_nodes",
+      "classification": "retained",
+      "slice": "W1/W2/W10; W3 for shadow variant",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W1/W2/W10; W3 for shadow variant | Shared models and many independently updated transforms; separate a bounded correctness case from the original large stress workload",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "audio_play_sound_stereo",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "5dd5b6a446d81fd5690b39718b16b1b54b346b03e17d988b21d006200c97d5da",
+      "caseId": "audio_play_sound_stereo",
+      "classification": "retained",
+      "slice": "W8",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W8 | Load the compiled WAV asset, loop, vary panning, stop/dispose; browser activation is explicit",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "audio_play_sound_spatialized",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "8e6cda1800d1f9033253752b25ab7b9df8deb56561092801ab04ad02ce73a1a0",
+      "caseId": "audio_play_sound_spatialized",
+      "classification": "retained",
+      "slice": "W8, conditional on spatial-audio capability",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W8, conditional on spatial-audio capability | Move a looping source and preserve the declared spatial convention; distinguish spatialization from stereo panning",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "imgui_basic",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "53832a59312d2006ccac08c6a24fea6e254b74329962eae41a0704f17508aab0",
+      "caseId": "imgui_basic",
+      "classification": "retained",
+      "slice": "W9",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W9 | The same panel/text function runs through Dear ImGui on desktop and the JS DOM/CSS backend on the web",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "imgui_edit",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "2c1ffbe57b17e25d9bd521b1e3015f6ade82364e83d9c596942eb02de86730fe",
+      "caseId": "imgui_edit",
+      "classification": "retained",
+      "slice": "W9",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W9 | Choice, reset button, color editing, numeric value/clamping, and visible application changes; native bgfx view IDs are not the portable UI contract",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "imgui_mouse_capture",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "6003fbcbf8fad6e52f62a16f5649ce431d44fe993b7e5a681f9e543187371125",
+      "caseId": "imgui_mouse_capture",
+      "classification": "retained",
+      "slice": "W9/W10",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W9/W10 | Text editing and pointer capture prevent simultaneous scene interaction; add keyboard-focus and composition assertions",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "audio_stream_ogg_stereo",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "e60e3e8c46237609c8c704b04d4575916e4c1ade2a7e65297100aa0fd747c526",
+      "caseId": "audio_stream_ogg_stereo",
+      "classification": "deferred",
+      "slice": "W8 streaming extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W8 streaming extension | True streaming, codec support, buffering, and panning require their own contract; decoding the entire file is not proof of streaming",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "draw_and_create_model_no_pipeline",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "db511dcef54e5e83813b799d0900c6742a0cd449265462a87e1cd49d036c966e",
+      "caseId": "draw_and_create_model_no_pipeline",
+      "classification": "deferred",
+      "slice": "W1 procedural-model extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W1 procedural-model extension | Uses `ModelBuilder` beyond the fixed cube/plane subset; useful once arbitrary procedural mesh construction is advertised",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "model_builder",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "a013afc2b0b408a63cecba1e08e3ed65159a62614723dfd59cad8918bf80b6b6",
+      "caseId": "model_builder",
+      "classification": "deferred",
+      "slice": "W1 dynamic-model extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W1 dynamic-model extension | Rebuilds/replaces procedural grid models; requires explicit buffer replacement and disposal semantics, beyond loading static models",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "model_builder_iso_surface",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "35a6c30edf64a0b0a2f287e8d232476a3231f7bfb8471539fcc0593f243703fe",
+      "caseId": "model_builder_iso_surface",
+      "classification": "deferred",
+      "slice": "Procedural iso-surface extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Procedural iso-surface extension | Combines iso-surface generation, AAA, and UI; a basic-forward derivative can test pure-JS geometry generation later, without restoring AAA scope",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "draw_text",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "1e0f146e2c229b3c501f19a1d83d1d319662d7bf9ecd867e63a28242adddd380",
+      "caseId": "draw_text",
+      "classification": "deferred",
+      "slice": "Engine text/overlay extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Engine text/overlay extension | The existing example exercises font resources, text alignment, and render state; a DOM label alone cannot claim full `DrawText` conformance",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "draw_text_over_models",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "906cd716f6212421f92c71768fd4c46eac6588064df4e2bc42a0cf9edc7ee1b5",
+      "caseId": "draw_text_over_models",
+      "classification": "deferred",
+      "slice": "Engine text/compositing extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Engine text/compositing extension | Adds a second drawing view and text-over-3D ordering; separate from the current portable UI controls",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "input_read_gamepad",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "0788c5f05e301a16c35bbf686165e9cd7ad36692e8530dd7a89dab20fa43272a",
+      "caseId": "input_read_gamepad",
+      "classification": "deferred",
+      "slice": "W0 gamepad extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W0 gamepad extension | Useful if gamepad support is declared, with connection/mapping/device coverage; keyboard/pointer foundations do not establish it",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_draw_to_multiple_viewports",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "2469359cec3b090e2f38e66bfca41a21b03974efe325fb9862af672e88fdae69",
+      "caseId": "scene_draw_to_multiple_viewports",
+      "classification": "deferred",
+      "slice": "Multi-view renderer extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Multi-view renderer extension | Retain four views and one scene update per frame; native preparation/view-ID APIs need an explicit portable counterpart",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_draw_to_texture",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "f6d1c9caa343818ab6f6023a2f7a73aced556b256cdb4bb973a2fb8b002494a7",
+      "caseId": "scene_draw_to_texture",
+      "classification": "deferred",
+      "slice": "Render-target sampling extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Render-target sampling extension | Render a scene into a texture then sample it on a model; the original requests RGBA32F and MSAA settings, which need a documented capability/fallback policy",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_capture_texture",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "a64174f64145b30e8ee8e614b82e3b9ffd8c0f8a1102385b063e446ef8084925",
+      "caseId": "scene_capture_texture",
+      "classification": "deferred",
+      "slice": "GPU readback/image-export extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "GPU readback/image-export extension | Tests capture completion and image export; this is a still-image feature, **not video**, but is outside the first profile",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "picture_save",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "c6194bdb9d8c66f18be2b8488e97c93e64554dcbf0617f3aa4bd993a8d658852",
+      "caseId": "picture_save",
+      "classification": "deferred",
+      "slice": "Image-export extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Image-export extension | JPEG-to-PNG conversion is meaningful on the web, but a download/blob service differs from arbitrary local file writes; defer the export API explicitly",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "screen_size_configurator",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "5911c7bac5144530c5e7dc90360fffcdd8c03af888952818d3fa9213b9b5ed85",
+      "caseId": "screen_size_configurator",
+      "classification": "deferred",
+      "slice": "W0/W9 display-settings extension",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "W0/W9 display-settings extension | A browser derivative can configure render resolution and supported display modes; native monitor enumeration and borderless multi-monitor window modes are excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "filesystem_local",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "186764532241fd8e6342be7218e3614769c3276b93fe20ca61883a12a2639d9a",
+      "caseId": "filesystem_local",
+      "classification": "excluded",
+      "slice": "Arbitrary local file handles are outside the browser profile; asset-loading coverage comes from `filesystem_assets`",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Arbitrary local file handles are outside the browser profile; asset-loading coverage comes from `filesystem_assets`",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "filesystem_recursive_directory_listing",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "e80e70e150385a19c86cf500223e68ae3d7608ccd81537caa8c44b7bc280d74a",
+      "caseId": "filesystem_recursive_directory_listing",
+      "classification": "excluded",
+      "slice": "Recursive native directory enumeration is outside the asset-manifest model",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Recursive native directory enumeration is outside the asset-manifest model",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "input_list_devices",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "6d84f7b7227465cf2cb44c487da32914b9659a0f1fafa05110ad756540278836",
+      "caseId": "input_list_devices",
+      "classification": "excluded",
+      "slice": "Lists native keyboard/mouse/gamepad device names; browser input/capability discovery has different semantics",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Lists native keyboard/mouse/gamepad device names; browser input/capability discovery has different semantics",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "audio_play_tts_say",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "d6c98307eb10c5051fce4486118bc76bfae6c5c3dc4e702e9b8948d7a3030065",
+      "caseId": "audio_play_tts_say",
+      "classification": "excluded",
+      "slice": "Depends on `lib-say` synthesis and a native PCM bridge; speech synthesis is outside the audio subset",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Depends on `lib-say` synthesis and a native PCM bridge; speech synthesis is outside the audio subset",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "audio_stream_mod_xm_stereo",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "94f2ab9c236e5e72abdd2d26143700b3fb33f0b2226cf1254af66e669ef272be",
+      "caseId": "audio_stream_mod_xm_stereo",
+      "classification": "excluded",
+      "slice": "Native module/tracker decoding is outside the initial audio subset; no Wasm plugin fallback",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Native module/tracker decoding is outside the initial audio subset; no Wasm plugin fallback",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "physics_impulse",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "e9c372f9d284e70505e05e6e4b143075691c8ead1ab1d64a4e0fe521a4ad3fa4",
+      "caseId": "physics_impulse",
+      "classification": "excluded",
+      "slice": "Physics excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Physics excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "physics_kapla",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "50d4393c188dfc672c233f90d4464716bdb82b518616adf464ee52f7298dba85",
+      "caseId": "physics_kapla",
+      "classification": "excluded",
+      "slice": "Physics excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Physics excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "physics_manual_setup",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "5022d7dcc3c99effc460b34630410e3b3aec7c158718a0052c18d2d696de7665",
+      "caseId": "physics_manual_setup",
+      "classification": "excluded",
+      "slice": "Physics excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Physics excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "physics_overrides_matrix",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "b29454d239f1c37fa079994ec549ffd663017cbdf74987643d3aa170d3e190a7",
+      "caseId": "physics_overrides_matrix",
+      "classification": "excluded",
+      "slice": "Physics integration semantics are its purpose; UI presence does not make it a portable UI test",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Physics integration semantics are its purpose; UI presence does not make it a portable UI test",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "physics_pool_benchmark",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "15f66515353bc5c253d909a5123e4697dc0622cbaf18e93b88192e969974bda9",
+      "caseId": "physics_pool_benchmark",
+      "classification": "excluded",
+      "slice": "Physics benchmark excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Physics benchmark excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "physics_pool_of_objects",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "07744c894fb4e2b82b9acf526329f406998640e3333e72824ad01e9057905fc8",
+      "caseId": "physics_pool_of_objects",
+      "classification": "excluded",
+      "slice": "Physics excluded; retain `scene_many_nodes` for non-physics scaling",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Physics excluded; retain `scene_many_nodes` for non-physics scaling",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "physics_pool_stress",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "119ef70a0e4e32ab2fd4770cdb5d9a5577ae76bd5e156aacb2e1d5c676104ecc",
+      "caseId": "physics_pool_stress",
+      "classification": "excluded",
+      "slice": "Physics stress excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Physics stress excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_aaa",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "f41e65d5bb0f5cb4d64fd5505308d725c3a7e2b204f2d2846429748a399d7bc4",
+      "caseId": "scene_aaa",
+      "classification": "excluded",
+      "slice": "AAA rendering excluded; its assets may still be reused in a separately named basic-forward fixture",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "AAA rendering excluded; its assets may still be reused in a separately named basic-forward fixture",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_aaa_vignette",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "5c4c251054430f0b4930c1b629d6ee3123418c82fe73d848d4c798317f80bd79",
+      "caseId": "scene_aaa_vignette",
+      "classification": "excluded",
+      "slice": "AAA/vignette feature excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "AAA/vignette feature excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_dof",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "b7b7d8e7f1ab93096158b5908b1185790d1b54bf43f8357a1faecb4e0aa27e0a",
+      "caseId": "scene_dof",
+      "classification": "excluded",
+      "slice": "AAA depth-of-field excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "AAA depth-of-field excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_vr",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "7b78ad627365daa3212c0bf3b726f51a214e3f6a55385e65c763308e09a30a59",
+      "caseId": "scene_vr",
+      "classification": "excluded",
+      "slice": "Native OpenVR and stereo/VR integration excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Native OpenVR and stereo/VR integration excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_vr_controllers",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "1036b90f98ac6927a7785ce0d5ec6d151c897d84717f03a7224e8614213f416c",
+      "caseId": "scene_vr_controllers",
+      "classification": "excluded",
+      "slice": "Native VR controller integration excluded; this family currently has only a Python entry",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Native VR controller integration excluded; this family currently has only a Python entry",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_vr_teleporter",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "91a12a98d09d9beba73b581a9747853786ca800135969b594480502815c031ad",
+      "caseId": "scene_vr_teleporter",
+      "classification": "excluded",
+      "slice": "VR interaction/device requirements excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "VR interaction/device requirements excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "scene_xr",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "sourceSHA256": "ffe8676ae4fe44ed00c61384c34dab781d54aa8260d424262e5b489b9c8a64cf",
+      "caseId": "scene_xr",
+      "classification": "excluded",
+      "slice": "Native OpenXR integration excluded",
+      "requires": [],
+      "adaptations": [],
+      "assetRecipe": "Pending applicable slice.",
+      "seed": null,
+      "checkpoints": [],
+      "assertions": "Native OpenXR integration excluded",
+      "visualTolerance": null,
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-ported"
+      }
+    },
+    {
+      "sourceFamily": "render_resize_to_window",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "caseId": "render_resize_to_window.lines",
+      "classification": "retained-derivative",
+      "slice": "W0",
+      "requires": [
+        "render.lines",
+        "math.foundation"
+      ],
+      "adaptations": [
+        "Replace W1 models with dynamic lines; verify orthographic aspect and drawing-buffer resize."
+      ],
+      "assetRecipe": "No source asset access.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "Canvas resize updates projection and dimensions.",
+      "visualTolerance": "Aspect/numeric checks.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    }
+  ]
+}
