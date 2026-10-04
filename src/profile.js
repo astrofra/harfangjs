@@ -4,7 +4,7 @@ function freeze(value) {
   if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); }
   return value;
 }
-export const profile = freeze({
+export const foundationProfile = freeze({
   api: 'harfang-js/1',
   id: 'web-foundation/1',
   assetSchema: 'harfang-web-assets/1',
@@ -24,6 +24,18 @@ export const profile = freeze({
   nativeJS: 'pending-slice-N'
 });
 
+export const profile = freeze({...foundationProfile,
+  id: 'web-static/1',
+  capabilities: [...foundationProfile.capabilities, 'scene.static', 'scene.hierarchy', 'scene.camera', 'render.mesh', 'material.unlit', 'assets.images'],
+  sceneComponents: ['node', 'transform', 'camera', 'object'],
+  materialFamilies: ['shaders/unlit.hps'],
+  modelPrograms: ['shaders/mdl', 'shaders/unlit.hps'],
+  limits: {...foundationProfile.limits, maxNodes: 10000, maxHierarchyDepth: 128, maxMeshVertices: 4000000,
+    maxMeshIndices: 12000000, maxTextureSize: 4096, maxGPUBytes: 134217728},
+  deferred: ['lights', 'shadows', 'instances', 'animation', 'skinning', 'audio', 'ui'],
+  approximations: [...foundationProfile.approximations, 'Explicit scene_pbr.structure mode draws unlit diagnostic colors; no PBR, light or environment rendering is claimed.']
+});
+
 export function requireCapabilities(required, source = 'application') {
   requireCondition(Array.isArray(required), 'INVALID_PROFILE', 'requires must be an array', source);
   for (const capability of required) requireCondition(profile.capabilities.includes(capability),
@@ -31,18 +43,41 @@ export function requireCapabilities(required, source = 'application') {
 }
 
 export function validateManifest(manifest) {
-  requireCondition(manifest?.schema === profile.assetSchema && manifest.api === profile.api && manifest.profile === profile.id,
+  requireCondition(manifest?.schema === profile.assetSchema && manifest.api === profile.api && [profile.id, foundationProfile.id].includes(manifest.profile),
     'INCOMPATIBLE_MANIFEST', `Expected ${profile.assetSchema}, ${profile.api}, ${profile.id}`, 'manifest');
   requireCapabilities(manifest.requires ?? [], 'manifest');
   requireCondition(manifest.assets && typeof manifest.assets === 'object' && !Array.isArray(manifest.assets),
     'INVALID_MANIFEST', 'assets must be a logical-ID map', 'manifest');
   for (const [id, entry] of Object.entries(manifest.assets)) {
     validateLogicalPath(id);
-    requireCondition(entry && entry.kind === 'bytes', 'UNSUPPORTED_ASSET', 'W0 supports byte resources only', id);
+    requireCondition(entry && ['bytes', 'scene-json', 'mesh', 'image'].includes(entry.kind), 'UNSUPPORTED_ASSET', 'Unsupported compiled asset kind', id);
     validateLogicalPath(entry.uri);
+    if (entry.kind !== 'bytes') requireCondition(Number.isSafeInteger(entry.byteLength) && typeof entry.sha256 === 'string', 'INVALID_MANIFEST', 'Compiled content requires byte length and SHA-256', id);
+    if (entry.kind === 'scene-json') requireCondition(['static', 'structure'].includes(entry.mode), 'INVALID_MANIFEST', 'Unknown scene mode', id);
+    if (entry.kind === 'image') requireCondition(['image/png', 'image/jpeg'].includes(entry.mime) &&
+      [entry.width, entry.height].every(n => Number.isInteger(n) && n > 0 && n <= profile.limits.maxTextureSize) &&
+      entry.colorSpace === 'encoded-rgb' && entry.sampler?.filter === 'linear' && entry.sampler?.wrap === 'repeat',
+      'INVALID_MANIFEST', 'Unsupported image format, dimensions or sampling metadata', id);
     requireCapabilities(entry.requires ?? [], id);
-    requireCondition(!entry.dependencies?.length, 'UNSUPPORTED_ASSET', 'Dependency graphs require W1', id);
+    requireCondition(entry.dependencies === undefined || Array.isArray(entry.dependencies), 'INVALID_MANIFEST', 'dependencies must be an array', id);
+    for (const dependency of entry.dependencies ?? []) {
+      validateLogicalPath(dependency);
+      requireCondition(Object.hasOwn(manifest.assets, dependency), 'MISSING_ASSET', `Missing dependency ${dependency}`, id);
+    }
+    if (entry.sha256 !== undefined) requireCondition(/^[a-f0-9]{64}$/.test(entry.sha256), 'INVALID_MANIFEST', 'Invalid SHA-256', id);
+    if (entry.byteLength !== undefined) requireCondition(Number.isSafeInteger(entry.byteLength) && entry.byteLength >= 0 && entry.byteLength <= profile.limits.maxResourceBytes,
+      'RESOURCE_BUDGET', 'Invalid compiled byte length', id);
   }
+  const visiting = new Set(), visited = new Set();
+  function visit(id) {
+    requireCondition(!visiting.has(id), 'ASSET_CYCLE', 'Cyclic compiled dependencies', id);
+    if (visited.has(id)) return;
+    visiting.add(id);
+    requireCondition(visiting.size <= profile.limits.maxHierarchyDepth, 'RESOURCE_BUDGET', 'Dependency graph is too deep', id);
+    for (const dependency of manifest.assets[id].dependencies ?? []) visit(dependency);
+    visiting.delete(id); visited.add(id);
+  }
+  Object.keys(manifest.assets).forEach(visit);
   return manifest;
 }
 

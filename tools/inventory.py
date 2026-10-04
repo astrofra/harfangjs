@@ -21,8 +21,14 @@ Node Node.IsValid Node.GetName Node.SetName Node.GetTransform Node.SetTransform
 Transform Transform.IsValid Transform.GetPos Transform.SetPos Transform.GetRot Transform.SetRot Transform.GetScale Transform.SetScale
 Transform.GetPosRot Transform.SetPosRot Transform.GetWorld VertexLayout VertexLayout.Begin VertexLayout.Add VertexLayout.End
 Vertices Vertices.Clear Vertices.Begin Vertices.SetPos Vertices.SetColor0 Vertices.End'''.split())
+SUPPORTED.update('''Transform.GetParent Transform.SetParent Transform.ClearParent Node.IsEnabled Node.IsItselfEnabled Node.Enable Node.Disable
+Node.GetCamera Node.SetCamera Node.GetObject Node.SetObject Camera Camera.IsValid Camera.GetZNear Camera.GetZFar Camera.GetFov Camera.SetFov
+Camera.GetSize Camera.SetSize Camera.GetIsOrthographic Scene.CreateCamera Scene.CreateOrthographicCamera Scene.GetCurrentCamera Scene.SetCurrentCamera
+Scene.DestroyCamera Scene.DestroyObject Object.GetMaterialCount Object.GetMaterialName Object.SetMaterialName
+CreateCubeModel CreatePlaneModel VertexLayoutPosFloatNormUInt8 Picture.GetWidth Picture.GetHeight'''.split())
 APPROXIMATE = set('''DrawLines LoadProgramFromFile Keyboard Mouse ReadKeyboard ReadMouse Keyboard.Down Keyboard.Pressed Keyboard.Released
 Mouse.X Mouse.Y Mouse.DtX Mouse.DtY Mouse.Wheel Mouse.Down Mouse.Pressed Mouse.Released'''.split())
+APPROXIMATE.update('''DrawModel LoadSceneFromAssets LoadSceneFromFile LoadPicture LoadTextureFromAssets Scene.CreateObject Object.GetMaterial Object.GetModelRef'''.split())
 
 
 def extract(source):
@@ -61,7 +67,7 @@ def extract(source):
         record = symbols.setdefault(name, dict(symbol=name, classification=classification, lines=[]))
         record['lines'].append(node.lineno)
         if classification == 'portable':
-            record['scope'] = 'Only documented W0 overloads; native JS pending N'
+            record['scope'] = 'Only documented W0/W1 overloads; native JS pending N'
         elif classification == 'approximation':
             record['scope'] = 'Context service adaptation; not exported as an unchanged native function'
     revision = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
@@ -70,7 +76,7 @@ def extract(source):
                   extraction='Literal class/function/method names; dynamic declarations listed unexpanded. Constants, constructors, operators and members are described in docs/contract.md.',
                   symbols=sorted(symbols.values(), key=lambda r: r['symbol']), dynamicDeclarations=dynamic)
     (ROOT / 'contract').mkdir(exist_ok=True)
-    (ROOT / 'contract/binding-inventory.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+    (ROOT / 'contract/binding-inventory.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8', newline='\r\n')
     return revision
 
 
@@ -79,6 +85,7 @@ def tutorials(source, revision):
     rows, classification = [], None
     w0 = {'basic_loop', 'input_read_keyboard_basic', 'input_read_keyboard_advanced', 'input_read_mouse_basic',
           'input_read_mouse_advanced', 'draw_lines', 'draw_lines_starfield', 'scene_lua_script'}
+    w1 = {'draw_model_no_pipeline','render_resize_to_window','filesystem_assets','picture_load'}
     for line in spec.splitlines():
         for section, label in [('## 3.', 'retained'), ('## 4.', 'deferred'), ('## 5.', 'excluded')]:
             if line.startswith(section): classification = label
@@ -87,13 +94,13 @@ def tutorials(source, revision):
         if not match or not classification: continue
         family, filename, description = match.groups()
         case_id = 'scene_lua_script.js' if family == 'scene_lua_script' else family
-        ported = family in w0
+        ported = family in w0 | w1
         rows.append(dict(sourceFamily=family, sourceRevision=revision,
             sourceSHA256=hashlib.sha256((source / 'tutorials' / filename).read_bytes()).hexdigest(),
-            caseId=case_id, classification=classification, slice='C/W0' if ported else description.split('|')[0].strip(),
-            requires=['render.lines'] if ported else [],
+            caseId=case_id, classification=classification, slice='W1' if family in w1 else 'C/W0' if ported else description.split('|')[0].strip(),
+            requires=['render.mesh', 'assets.images'] if family in w1 else ['render.lines'] if ported else [],
             adaptations=['Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop.'] if ported else [],
-            assetRecipe='Built-in reviewed line programs and static behavior module; no scene assets.' if ported else 'Pending applicable slice.',
+            assetRecipe='tools/build_assets.py; compiled pictures/owl.jpg for image cases; reviewed mdl adapter for fixed cube/plane.' if family in w1 else 'Built-in reviewed line programs and static behavior module; no scene assets.' if ported else 'Pending applicable slice.',
             seed=1337 if family == 'draw_lines_starfield' else None,
             checkpoints=[0, 16, 32, 48] if ported else [], assertions=description.rstrip(' |'),
             visualTolerance='Feature/pixel-region checks; no pixel parity claim.' if ported else None,
@@ -107,7 +114,17 @@ def tutorials(source, revision):
         assetRecipe='No source asset access.', seed=None, checkpoints=[0, 16, 32, 48],
         assertions='Canvas resize updates projection and dimensions.', visualTolerance='Aspect/numeric checks.',
         executionStatus={'nativeOriginal': 'not-run', 'nativeJS': 'not-ported', 'browser': 'not-run'}))
-    (ROOT / 'contract/tutorials.json').write_text(json.dumps(dict(familyCounts=counts, cases=rows), indent=2) + '\n', encoding='utf-8')
+    for case_id, source_family in [('scene_pbr.structure','scene_pbr'), ('scene_static_room',None)]:
+        rows.append(dict(sourceFamily=source_family, sourceRevision=revision, caseId=case_id,
+            classification='retained-derivative' if source_family else 'supplemental-fixture', slice='W1',
+            requires=['scene.static','scene.hierarchy','scene.camera','render.mesh','material.unlit','assets.images'],
+            adaptations=['Original JSON and assignments preserved; explicit opaque unlit diagnostic colors; no PBR/light/environment rendering.'] if source_family else [],
+            assetRecipe='tools/build_assets.py: shared native/web assets and native scene-state references.',
+            seed=None, checkpoints=[0,16,32,48],
+            assertions='Native hierarchy, transforms, camera, material assignment and cleanup; room also compares native rendered views.',
+            visualTolerance='Room: channel MAE < 2/255 and < 3% pixels with any channel error > 16/255. PBR structure: no appearance parity claim.',
+            executionStatus={'nativeOriginal':'not-run','nativeJS':'not-ported','browser':'not-run'}))
+    (ROOT / 'contract/tutorials.json').write_text(json.dumps(dict(familyCounts=counts, cases=rows), indent=2) + '\n', encoding='utf-8', newline='\r\n')
 
 
 if __name__ == '__main__':

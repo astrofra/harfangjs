@@ -1,9 +1,11 @@
 """Create a dependency-free HTTP package and audit its JavaScript/module boundary."""
 import hashlib
+import argparse
 import json
 from pathlib import Path
 import re
 import shutil
+from build_assets import build_assets
 
 ROOT = Path(__file__).resolve().parents[1]
 INCLUDES = ('src', 'examples/tutorials', 'tests', 'contract')
@@ -11,7 +13,7 @@ INCLUDES = ('src', 'examples/tutorials', 'tests', 'contract')
 
 def audit(root):
     files = []
-    for folder in INCLUDES:
+    for folder in (*INCLUDES, 'assets-web'):
         for path in sorted((root / folder).rglob('*')):
             if not path.is_file():
                 continue
@@ -35,7 +37,10 @@ def audit(root):
     return files
 
 
-def build():
+def build(assets=None):
+    assets = Path(assets).resolve() if assets else build_assets()
+    if not (assets / 'manifest.json').is_file():
+        raise ValueError(f'Missing compiled manifest: {assets}')
     audit(ROOT)
     target = (ROOT / 'dist/web').resolve()
     # The deletion target is a fixed generated directory, checked before removal.
@@ -46,9 +51,10 @@ def build():
     target.mkdir(parents=True)
     for folder in INCLUDES:
         shutil.copytree(ROOT / folder, target / folder)
+    shutil.copytree(assets, target / 'assets-web')
     shutil.copy2(ROOT / 'LICENSE', target / 'LICENSE')
     (target / 'index.html').write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=examples/tutorials/"><a href="examples/tutorials/">HARFANG JS tutorials</a>\n', encoding='utf-8')
-    report = dict(api='harfang-js/1', profile='web-foundation/1', nativeJS='pending-slice-N',
+    report = dict(api='harfang-js/1', profile='web-static/1', nativeJS='pending-slice-N',
                   runtimeDependencies=[], wasmPayloads=0, files=audit(target))
     (target / 'release.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     print(f'Built {target}: {len(report["files"])} audited files, no runtime dependencies.')
@@ -56,4 +62,6 @@ def build():
 
 
 if __name__ == '__main__':
-    build()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--assets', type=Path, help='Package an existing assetc-web output instead of rebuilding native/web fixtures')
+    build(parser.parse_args().assets)

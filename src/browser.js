@@ -1,8 +1,8 @@
 import {createRunner} from './core/lifecycle.js';
 import {InputManager} from './core/input.js';
-import {ResourceManager} from './core/resources.js';
+import {StaticAssets} from './scene/assets.js';
 import {ScriptManager} from './scene/scripts.js';
-import {LineRenderer} from './render/lines.js';
+import {StaticRenderer} from './render/static.js';
 import {HarfangError, requireCondition} from './core/errors.js';
 import {profile} from './profile.js';
 
@@ -22,9 +22,9 @@ export function createBrowserApplication(application, {
   };
   try {
     requireCondition(canvas instanceof HTMLCanvasElement, 'INVALID_CANVAS', 'Expected an HTML canvas');
-    const renderer = new LineRenderer(canvas); disposables.push(renderer);
+    const renderer = new StaticRenderer(canvas); disposables.push(renderer);
     const input = new InputManager().attach(canvas); disposables.push(input);
-    const assets = new ResourceManager({manifest, baseURL: assetBaseURL}); disposables.push(assets);
+    const assets = new StaticAssets({manifest, baseURL: assetBaseURL, renderer}); disposables.push(assets);
     const scripts = new ScriptManager(modules); disposables.push(scripts);
     const context = {canvas, renderer, input, assets, scripts, width: canvas.width, height: canvas.height};
     let runner;

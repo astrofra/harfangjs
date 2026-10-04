@@ -22,12 +22,17 @@ export class ResourceManager {
   #entries = new Map();
   #pool = new HandlePool();
   #manifest; #baseURL; #fetch; #disposed = false;
-  constructor({manifest, baseURL, fetch: fetcher = globalThis.fetch}) {
+  constructor({manifest, baseURL, fetch: fetcher = (...args) => globalThis.fetch(...args)}) {
     this.#manifest = JSON.parse(JSON.stringify(validateManifest(manifest)));
     this.#baseURL = new URL(baseURL);
     requireCondition(['http:', 'https:'].includes(this.#baseURL.protocol) && this.#baseURL.pathname.endsWith('/'),
       'INVALID_ASSET_PATH', 'Compiled asset base must be an HTTP(S) directory URL');
-    this.#fetch = fetcher;
+    this.#fetch = (...args) => fetcher(...args);
+  }
+  describe(id) {
+    requireCondition(!this.#disposed, 'DISPOSED', 'Resource manager is disposed', id);
+    requireCondition(Object.hasOwn(this.#manifest.assets, id), 'MISSING_ASSET', 'Logical ID is absent from the compiled manifest', id);
+    return JSON.parse(JSON.stringify(this.#manifest.assets[id]));
   }
   acquire(id, {signal} = {}) {
     try {
@@ -85,6 +90,15 @@ export class ResourceManager {
         'RESOURCE_BUDGET', 'Resource exceeds byte budget', entry.id);
       const data = await response.arrayBuffer();
       if (entry.controller.signal.aborted || this.#disposed) throw abortError(entry.id);
+      requireCondition(descriptor.byteLength === undefined || data.byteLength === descriptor.byteLength,
+        'CORRUPT_ASSET', 'Compiled byte length does not match manifest', entry.id);
+      if (descriptor.sha256) {
+        requireCondition(globalThis.crypto?.subtle, 'INTEGRITY_UNAVAILABLE', 'SHA-256 verification requires HTTPS or localhost', entry.id);
+        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
+        const hash = [...digest].map(n => n.toString(16).padStart(2, '0')).join('');
+        requireCondition(hash === descriptor.sha256, 'CORRUPT_ASSET', 'SHA-256 does not match compiled manifest', entry.id);
+        if (entry.controller.signal.aborted || this.#disposed) throw abortError(entry.id);
+      }
       requireCondition(data.byteLength + this.stats.bytes <= profile.limits.maxResourceBytes,
         'RESOURCE_BUDGET', 'Resident resource byte budget exceeded', entry.id);
       entry.data = data;

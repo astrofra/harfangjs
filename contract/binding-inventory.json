@@ -101,45 +101,51 @@
     },
     {
       "symbol": "Camera",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         980
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetFov",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         991
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetIsOrthographic",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         993
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetSize",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         995
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetZFar",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         987
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetZNear",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         985
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.GetZRange",
@@ -150,17 +156,19 @@
     },
     {
       "symbol": "Camera.IsValid",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         982
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.SetFov",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         992
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.SetIsOrthographic",
@@ -171,10 +179,11 @@
     },
     {
       "symbol": "Camera.SetSize",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         996
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Camera.SetZFar",
@@ -404,7 +413,7 @@
       "lines": [
         3128
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "ColorFromABGR32",
@@ -440,7 +449,7 @@
       "lines": [
         3176
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "ColorToABGR32",
@@ -476,7 +485,7 @@
       "lines": [
         728
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "ComputeAspectRatioY",
@@ -498,7 +507,7 @@
       "lines": [
         725
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "ComputeOrthographicViewState",
@@ -513,7 +522,7 @@
       "lines": [
         726
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "ComputePerspectiveViewState",
@@ -651,10 +660,11 @@
     },
     {
       "symbol": "CreateCubeModel",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         2667
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "CreateCylinderModel",
@@ -772,10 +782,11 @@
     },
     {
       "symbol": "CreatePlaneModel",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         2669
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "CreatePointLight",
@@ -860,7 +871,7 @@
       "lines": [
         3728
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "CrossProductMat3",
@@ -973,7 +984,7 @@
       "lines": [
         3850
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Deg3",
@@ -981,7 +992,7 @@
       "lines": [
         3750
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "DegreeToRadian",
@@ -1119,7 +1130,7 @@
         3727,
         3351
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "DrawLines",
@@ -1131,10 +1142,11 @@
     },
     {
       "symbol": "DrawModel",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2686
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "DrawNavMesh",
@@ -1415,7 +1427,7 @@
       "lines": [
         723
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "FpsController",
@@ -1748,7 +1760,7 @@
         3587,
         3669
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "GetCurrentWorkingDirectory",
@@ -2187,7 +2199,7 @@
       "lines": [
         3595
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "GetTextures",
@@ -2203,7 +2215,7 @@
         3503,
         3596
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "GetUserFolder",
@@ -4297,7 +4309,7 @@
         3666,
         3731
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "InverseFast",
@@ -4617,7 +4629,7 @@
         3722,
         3349
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Len2",
@@ -4997,10 +5009,11 @@
     },
     {
       "symbol": "LoadPicture",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         3233
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "LoadPipelineProgramFromAssets",
@@ -5082,17 +5095,19 @@
     },
     {
       "symbol": "LoadSceneFromAssets",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         1559
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "LoadSceneFromFile",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         1558
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "LoadSceneJsonFromAssets",
@@ -5131,11 +5146,12 @@
     },
     {
       "symbol": "LoadTextureFromAssets",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         2489,
         2528
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "LoadTextureFromFile",
@@ -5285,7 +5301,7 @@
         3244,
         3560
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Mat44",
@@ -5294,7 +5310,7 @@
         3245,
         3646
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Mat4LookAt",
@@ -5667,7 +5683,7 @@
       "lines": [
         936
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.ComputeCameraViewState",
@@ -5692,24 +5708,27 @@
     },
     {
       "symbol": "Node.Disable",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1167
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.Enable",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1166
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetCamera",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1178
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetCollision",
@@ -5773,14 +5792,15 @@
       "lines": [
         1209
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetObject",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1185
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetRigidBody",
@@ -5809,7 +5829,7 @@
       "lines": [
         1173
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.GetUid",
@@ -5869,10 +5889,11 @@
     },
     {
       "symbol": "Node.IsEnabled",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1169
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.IsInstantiatedBy",
@@ -5883,10 +5904,11 @@
     },
     {
       "symbol": "Node.IsItselfEnabled",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1170
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.IsValid",
@@ -5894,7 +5916,7 @@
       "lines": [
         1158
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.RemoveCamera",
@@ -5947,10 +5969,11 @@
     },
     {
       "symbol": "Node.SetCamera",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1179
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.SetCollision",
@@ -5986,14 +6009,15 @@
       "lines": [
         1210
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.SetObject",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1186
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.SetRigidBody",
@@ -6015,7 +6039,7 @@
       "lines": [
         1174
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Node.SetWorld",
@@ -6069,7 +6093,7 @@
         3733,
         3353
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "NormalizePath",
@@ -6108,24 +6132,27 @@
     },
     {
       "symbol": "Object.GetMaterial",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         1009
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "Object.GetMaterialCount",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1014
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Object.GetMaterialName",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1016
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Object.GetMinMax",
@@ -6136,10 +6163,11 @@
     },
     {
       "symbol": "Object.GetModelRef",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         1006
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "Object.IsValid",
@@ -6178,10 +6206,11 @@
     },
     {
       "symbol": "Object.SetMaterialName",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1017
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Object.SetModelRef",
@@ -6550,10 +6579,11 @@
     },
     {
       "symbol": "Picture.GetHeight",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         3202
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Picture.GetPixelRGBA",
@@ -6564,10 +6594,11 @@
     },
     {
       "symbol": "Picture.GetWidth",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         3201
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Picture.SetData",
@@ -6876,7 +6907,7 @@
       "lines": [
         737
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "ProjectToScreenSpace",
@@ -6884,7 +6915,7 @@
       "lines": [
         745
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "ProjectZToClipSpace",
@@ -7316,7 +7347,7 @@
       "lines": [
         3628
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "RotationMatX",
@@ -7534,7 +7565,7 @@
       "lines": [
         3632
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene",
@@ -7542,7 +7573,7 @@
       "lines": [
         933
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.Clear",
@@ -7574,10 +7605,11 @@
     },
     {
       "symbol": "Scene.CreateCamera",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1359
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.CreateCollision",
@@ -7620,21 +7652,23 @@
       "lines": [
         1346
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.CreateObject",
-      "classification": "unsupported",
+      "classification": "approximation",
       "lines": [
         1374
-      ]
+      ],
+      "scope": "Context service adaptation; not exported as an unchanged native function"
     },
     {
       "symbol": "Scene.CreateOrthographicCamera",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1363
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.CreatePointLight",
@@ -7670,7 +7704,7 @@
       "lines": [
         1351
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.DestroyAnimPlayer",
@@ -7681,10 +7715,11 @@
     },
     {
       "symbol": "Scene.DestroyCamera",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1364
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.DestroyCollision",
@@ -7713,14 +7748,15 @@
       "lines": [
         1347
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.DestroyObject",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1375
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.DestroyRigidBody",
@@ -7742,7 +7778,7 @@
       "lines": [
         1355
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GarbageCollect",
@@ -7774,10 +7810,11 @@
     },
     {
       "symbol": "Scene.GetCurrentCamera",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1434
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GetKeys",
@@ -7799,7 +7836,7 @@
       "lines": [
         1292
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GetNodeChildren",
@@ -7814,7 +7851,7 @@
       "lines": [
         1300
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GetNodeEx",
@@ -7829,7 +7866,7 @@
       "lines": [
         1295
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.GetNodesWithComponent",
@@ -7980,10 +8017,11 @@
     },
     {
       "symbol": "Scene.SetCurrentCamera",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         1435
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Scene.SetProbe",
@@ -9397,21 +9435,23 @@
       "lines": [
         945
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.ClearParent",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         966
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetParent",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         964
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetPos",
@@ -9419,7 +9459,7 @@
       "lines": [
         950
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetPosRot",
@@ -9427,7 +9467,7 @@
       "lines": [
         959
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetRot",
@@ -9435,7 +9475,7 @@
       "lines": [
         952
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetScale",
@@ -9443,7 +9483,7 @@
       "lines": [
         954
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.GetTRS",
@@ -9458,7 +9498,7 @@
       "lines": [
         968
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.IsValid",
@@ -9466,7 +9506,7 @@
       "lines": [
         947
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetLocal",
@@ -9477,10 +9517,11 @@
     },
     {
       "symbol": "Transform.SetParent",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         965
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetPos",
@@ -9488,7 +9529,7 @@
       "lines": [
         951
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetPosRot",
@@ -9496,7 +9537,7 @@
       "lines": [
         960
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetRot",
@@ -9504,7 +9545,7 @@
       "lines": [
         953
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetScale",
@@ -9512,7 +9553,7 @@
       "lines": [
         955
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transform.SetTRS",
@@ -9548,7 +9589,7 @@
       "lines": [
         3636
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "TranslationMat3",
@@ -9563,7 +9604,7 @@
       "lines": [
         3627
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Transpose",
@@ -9873,7 +9914,7 @@
         3241,
         3676
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Vec3.Set",
@@ -9896,7 +9937,7 @@
         3242,
         3369
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Vec4.Set",
@@ -9932,7 +9973,7 @@
       "lines": [
         2415
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayout.Add",
@@ -9940,7 +9981,7 @@
       "lines": [
         2418
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayout.Begin",
@@ -9948,7 +9989,7 @@
       "lines": [
         2417
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayout.End",
@@ -9956,7 +9997,7 @@
       "lines": [
         2420
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayout.GetOffset",
@@ -10016,10 +10057,11 @@
     },
     {
       "symbol": "VertexLayoutPosFloatNormUInt8",
-      "classification": "unsupported",
+      "classification": "portable",
       "lines": [
         2428
-      ]
+      ],
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "VertexLayoutPosFloatNormUInt8TexCoord0UInt8",
@@ -10041,7 +10083,7 @@
       "lines": [
         2796
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.Begin",
@@ -10049,7 +10091,7 @@
       "lines": [
         2801
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.Clear",
@@ -10057,7 +10099,7 @@
       "lines": [
         2820
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.End",
@@ -10065,7 +10107,7 @@
       "lines": [
         2818
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.GetCapacity",
@@ -10129,7 +10171,7 @@
       "lines": [
         2814
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.SetColor1",
@@ -10165,7 +10207,7 @@
       "lines": [
         2802
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "Vertices.SetTangent",
@@ -10496,7 +10538,7 @@
       "lines": [
         173
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "time_from_ms_f",
@@ -10511,7 +10553,7 @@
       "lines": [
         175
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "time_from_sec",
@@ -10519,7 +10561,7 @@
       "lines": [
         172
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "time_from_sec_f",
@@ -10527,7 +10569,7 @@
       "lines": [
         165
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "time_from_us",
@@ -10577,7 +10619,7 @@
       "lines": [
         161
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_ms_f",
@@ -10585,7 +10627,7 @@
       "lines": [
         154
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_ns",
@@ -10593,7 +10635,7 @@
       "lines": [
         163
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_sec",
@@ -10601,7 +10643,7 @@
       "lines": [
         160
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_sec_f",
@@ -10609,7 +10651,7 @@
       "lines": [
         153
       ],
-      "scope": "Only documented W0 overloads; native JS pending N"
+      "scope": "Only documented W0/W1 overloads; native JS pending N"
     },
     {
       "symbol": "time_to_string",

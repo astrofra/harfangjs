@@ -1,13 +1,13 @@
-# Portable foundation contract
+# Portable foundation and static-scene contract
 
-API `harfang-js/1`, profile `web-foundation/1`, asset schema `harfang-web-assets/1`.
-This is the C contract subset exercised by W0. It does not advertise the future `web-lite/1` scene profile. Native facade enforcement and native JS execution remain N integration work.
+API `harfang-js/1`, profile `web-static/1`, asset schema `harfang-web-assets/1`. Earlier `web-foundation/1` manifests remain accepted.
+This is the C contract subset exercised by W0/W1. It does not advertise the future `web-lite/1` profile. Native facade enforcement and native JS execution remain N integration work.
 
 ## Source and module boundaries
 
 The source specs are in the sibling `harfang3d/specifications/` directory:
 
-- `SPECS_HYBRID_CPP_JS_WEBGL_DELIVERY_SLICES.md`, sections C and W0.
+- `SPECS_HYBRID_CPP_JS_WEBGL_DELIVERY_SLICES.md`, sections C, W0 and W1.
 - `SPECS_HYBRID_CPP_JS_WEBGL_FEASIBILITY.md`, especially value semantics, scheduling and projection conventions.
 - `SPECS_HYBRID_CPP_JS_WEBGL_TUTORIAL_VALIDATION.md`.
 
@@ -33,7 +33,7 @@ Math values use float32 storage. Named arithmetic methods replace operator overl
 | Matrix helpers | `GetColumn`, `GetT/GetTranslation`, `TranslationMat4`, `ScaleMat4`, `RotationMat4`, `TransformationMat4`, `Inverse` |
 | Projection | `ComputeAspectRatioX`, `FovToZoomFactor`, perspective/orthographic projection, `ProjectToClipSpace`, `ProjectToScreenSpace` |
 
-Rotations are radians, default `RO_YXZ` (`Ry * Rx * Rz`); alternate Euler orders and quaternion APIs are not advertised. World/view math uses positive Z forward. Projection always targets WebGL homogeneous depth `[-1,1]`. Screen math has positive Y upward and preserves native clip-Z rather than returning a normalized depth-buffer value. `ProjectToScreenSpace` takes view-space positions. Parent transforms and authored JSON degree conversion belong to W1.
+Rotations are radians, default `RO_YXZ` (`Ry * Rx * Rz`); alternate Euler orders and quaternion APIs are not advertised. World/view math uses positive Z forward. Projection always targets WebGL homogeneous depth `[-1,1]`. Screen math has positive Y upward and preserves native clip-Z rather than returning a normalized depth-buffer value. `ProjectToScreenSpace` takes view-space positions. W1 composes parent transforms and converts authored JSON Euler degrees to radians; authored camera FOV is already radians.
 
 `Inverse(matrix)` returns `[success, inverse]`. A singular matrix yields `[false, identity]`; callers must inspect the boolean. Projection functions return `[success, Vec3]`, with a deterministic zero output when homogeneous W is nonpositive. These are multiple logical outputs in array order; `Scene.GetNodes()` is a single collection value. Matrices/world positions are compared within `1e-4` against recorded native outputs, screen pixels within `0.001`; intermediate rounding is not bit-identical.
 
@@ -41,15 +41,21 @@ Native `time_ns` and integer time arguments use signed 64-bit `BigInt`, includin
 
 ## Scene and resource ownership
 
-`Scene` supports programmatic `CreateNode(name)`, `GetNode(name)`, `GetNodes()`, `GetNodeCount()`, `DestroyNode(node)`, `CreateTransform(pos, rot, scale)`, `DestroyTransform(transform)`, and `.dispose()`. Names may repeat; lookup returns the first live match. Missing lookup returns an invalid, truthy wrapper. `Node` supports name and transform get/set; `Transform` supports position/rotation/scale get/set, `[pos,rot]` get/set, and unparented `GetWorld()`.
+`Scene` supports programmatic `CreateNode(name)`, `GetNode(name)`, `GetNodes()`, `GetNodeCount()`, `DestroyNode(node)`, `CreateTransform(pos, rot, scale)`, `DestroyTransform(transform)`, and `.dispose()`. Names may repeat; lookup returns the first live match. Missing lookup returns an invalid, truthy wrapper. `Node` supports name and transform get/set; `Transform` supports position/rotation/scale get/set, `[pos,rot]` get/set, and composed `GetWorld()`.
+
+W1 adds `Transform.GetParent/SetParent/ClearParent` with Node handles, cycle checks and a depth limit. Destroyed parent references become invalid and world computation uses the remaining valid chain. `Node.Enable/Disable/IsEnabled/IsItselfEnabled` reflect local state, matching native ordinary parent behavior: disabling a parent does not disable its children. Instances are excluded.
+
+Nodes expose `Get/SetCamera` and `Get/SetObject`. `Scene.CreateCamera()` preserves the native empty camera defaults (near .01, far 1000, FOV 40 degrees); the `(near,far,fov?)` overload defaults FOV to 45 degrees. `CreateOrthographicCamera(near,far,size=1)` supplies an orthographic component. `Camera` exposes near/far/FOV/size/orthographic getters and FOV/size setters. FOV arguments are radians. `SetCurrentCamera/GetCurrentCamera` use a camera Node; `ComputeCurrentCameraViewState(aspect)` returns `{view,proj,viewProjection}` and rejects singular camera transforms. Components are generation-checked and can be destroyed explicitly.
+
+`Scene.CreateObject(model, materials)` creates the implemented object subset; `ObjectComponent.GetModelRef/GetMaterialCount/GetMaterial/GetMaterialName/SetMaterialName` expose its assignments. Native model references and materials are adapted to JS resources/material descriptors, not native reference structs. Material descriptors are shared mutable JS values; this does not claim native material-update conformance. The scene loader preserves material slot names and core metadata. `Scene.own(resource)` registers synchronous disposal for scene-owned resources.
 
 Get/change/set is required: mutating `transform.GetPos().x` changes only the returned value. Scene component setters also copy their inputs. Cross-scene component assignment and stale handles throw `INVALID_HANDLE`. Free-list reuse cannot revive a generation. Destroying a node does not implicitly destroy its transform, matching native `Scene::DestroyNode`; explicit transform destruction or scene disposal releases it. Behaviors detach while their node is still valid. Scene disposal invalidates all nodes/transforms and invokes every cleanup even if one callback fails.
 
-`ResourceManager({manifest, baseURL, fetch?}).acquire(logicalId, {signal?})` asynchronously returns a lease. W0 manifest entries have `kind: "bytes"`, relative `uri`, optional supported `requires`, and no dependency graph. Base URLs must be HTTP(S) directories. Paths are case-sensitive logical names; absolute URLs, encoded/traversal paths, and absent IDs fail. Schema, API and profile IDs must match exactly.
+`ResourceManager({manifest, baseURL, fetch?}).acquire(logicalId, {signal?})` asynchronously returns a lease. Manifest entries have a supported kind, relative `uri`, optional supported `requires`, and declared dependency IDs. Base URLs must be HTTP(S) directories. Paths are case-sensitive logical names; absolute URLs, encoded/traversal paths, absent IDs and cyclic dependencies fail. Schema and API must match; either documented profile version is accepted. `describe(id)` returns a copied manifest entry.
 
 An acquired lease exposes `IsValid()`, `logicalId`, `byteLength`, copied `.bytes()`, UTF-8 `.text()`, and idempotent `.dispose()`. Concurrent leases share one fetch. Cancelling one waiter leaves other consumers alive; cancelling the last waiter aborts the fetch. The last released lease evicts its bytes. Failure is not cached; a later request can retry. Manager disposal aborts pending work and invalidates all leases. `stats` reports resources, handles, pending loads and resident bytes. Browser application stop cancels pending resource/module loads automatically; applications may also pass `ctx.signal` explicitly.
 
-Runtime resources must come from compiled output. W0 has no authoring importer or scene compiler. The byte manager rejects scene/image/mesh kinds, dependency graphs and unsupported requirements instead of accepting them as inert data. Its 64 MiB limit applies to resident resource bytes; unknown-length HTTP bodies can temporarily allocate during download before the final size check. Streaming decode/memory hardening is a later extension.
+Runtime resources come from compiled output. W1's `StaticAssets` interprets scene/image/mesh entries after byte-length/SHA-256 verification and supports transactional async loads. See [static assets](static-assets.md) for signatures, payload formats, image conventions and ownership. The byte manager's 64 MiB limit applies to resident resource bytes; unknown-length HTTP bodies can temporarily allocate during download before the final size check. Streaming decode/memory hardening is a later extension.
 
 ## Application lifecycle
 
@@ -83,4 +89,8 @@ W0 maps `shaders/white` and `shaders/pos_rgb` to reviewed GLSL ES 3.00 adapters 
 
 `VertexLayout.Begin/Add/End` accepts only `A_Position,3,AT_Float` and optional `A_Color0,3,AT_Float`, in that order. These portable attribute tokens are strings; the future native facade must map them to bgfx enums. `Vertices(layout,count)` holds up to 131,072 vertices; `Clear/Begin/SetPos/SetColor0/End` fill consecutive complete pairs. Sparse/incomplete/mismatched layouts fail. `ctx.renderer.beginFrame(Color)` clears the full viewport; `drawLines(vertices, program, Mat44.Identity)` uploads one dynamic buffer and submits one draw. Depth test/write are enabled, blending/culling disabled, and lines are one pixel wide. Driver-chosen antialiasing is an explicit approximation. `renderer.stats` reports draw calls, submitted vertices, live programs and GPU buffer bytes.
 
-There are no scene files, cameras/components, mesh/material families, lights/shadows, instances, animation, skinning, audio or portable UI in this profile. Math projection does not imply camera/scene-loading support. Physics, navigation, video, VR, AAA and Wasm remain excluded. Unknown required capabilities produce `UNSUPPORTED_CAPABILITY` with the application or logical asset source. Public methods are implemented only for the table's documented overloads; the inventory does not promise native API completeness.
+`StaticRenderer` extends the line renderer, and is the browser context's default renderer. `CreateCubeModel(layout,w,h,d)` and `CreatePlaneModel(layout,w,d,1,1)` accept `VertexLayoutPosFloatNormUInt8()`, preserving the native primitive positions/normals/UVs and winding. `Model` holds copied, validated fixed position/normal/UV buffers, triangle indices, submeshes and local bounds; replacement/general ModelBuilder is deferred. `drawModel(model, program, Mat4, Mat44, materials?)` implements reviewed `shaders/mdl` and `shaders/unlit.hps` adapters. `submit(scene)` clears from the scene canvas and draws enabled object nodes using its enabled current camera. There is no visibility/frustum-culling optimization yet.
+
+W1's unlit material supports one `uColor` vec4, optional stage-0 `uColorMap`, opaque output, `cw/ccw/disabled` culling, `less/leq/always/disabled` depth test, and per-channel/depth writes. Negative scale retains native winding behavior; it does not silently flip culling. Renderer counters add meshes, textures, static programs, triangles, mesh draws and static GPU bytes. Allocation errors fail explicitly; model/image disposal frees associated GPU allocations.
+
+Lights/shadows, instances, animation, skinning, audio and portable UI remain deferred. Physics, navigation, video, VR, AAA and Wasm remain excluded. Unknown required capabilities produce `UNSUPPORTED_CAPABILITY` with the application or logical asset source. Scene features outside W1 reject, including unknown fields, skinning and native script components. Only explicit `scene_pbr.structure` permits retained lighting/PBR metadata with opaque unlit diagnostic rendering; it never claims a W2 appearance pass. Public methods implement only documented overloads; the inventory does not promise native API completeness.

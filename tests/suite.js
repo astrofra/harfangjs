@@ -3,6 +3,7 @@ import {createBrowserApplication} from 'harfang/browser';
 import {HandlePool} from '../src/core/handles.js';
 import {createApplication, cases} from '../examples/tutorials/application.js';
 import * as communication from '../examples/tutorials/behaviors/communication.js';
+import {registerStaticTests} from './static-suite.js';
 
 const tests = [];
 window.tutorialCaptures = {};
@@ -94,7 +95,7 @@ test('scene: named node get/change/set, copies, output order and destruction', (
   const foreign = new hg.Scene(); const foreignTransform = foreign.CreateTransform();
   throws(() => replacement.SetTransform(foreignTransform), 'INVALID_HANDLE');
   foreign.dispose(); scene.DestroyTransform(t); assert(!t.IsValid());
-  scene.dispose(); scene.dispose(); equal(scene.stats, {nodes: 0, transforms: 0});
+  scene.dispose(); scene.dispose(); equal(scene.stats, {nodes: 0, transforms: 0, cameras: 0, objects: 0});
   throws(() => scene.CreateNode(), 'DISPOSED');
 });
 test('handles: reuse never revives stale or foreign generation tokens', () => {
@@ -314,6 +315,7 @@ test('browser adapter: stop cancels init loads even without an explicit consumer
   canvas.remove();
 });
 
+registerStaticTests({test, assert, equal, near, throws, rejects, scheduler});
 const results = [];
 for (const {name, fn} of tests) {
   try { await fn(); results.push({name, status: 'pass'}); }

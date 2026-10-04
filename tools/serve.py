@@ -10,6 +10,13 @@ ROOT = Path(__file__).resolve().parents[1]
 class Handler(SimpleHTTPRequestHandler):
     extensions_map = {**SimpleHTTPRequestHandler.extensions_map, '.js': 'text/javascript', '.json': 'application/json'}
 
+    def translate_path(self, path):
+        resolved = Path(super().translate_path(path)).resolve()
+        assets = Path(self.directory).resolve() / 'assets-web'
+        if Path(self.directory).resolve() == ROOT and resolved.is_relative_to(assets):
+            return str(ROOT / 'build/assets-web' / resolved.relative_to(assets))
+        return str(resolved)
+
     def log_message(self, *_):
         pass
 

@@ -1,12 +1,12 @@
-# C / W0 implementation evidence
+# C / W0 / W1 implementation evidence
 
 Implemented in `harfangjs` on 2026-10-04 against HARFANG checkout `5fe83f1adabf26294003be4c6e13ea068413b5d9`. The existing native tutorials and source repository are unchanged.
 
-This delivery provides the portable contract subset and executable browser foundations. **The specification's complete cross-host C/W0 acceptance gate is still open:** the native QuickJS launcher/facade belongs to N. The current native math comparison is against a real C++ HARFANG Python module, not native JavaScript. No unsupported scene feature or unported native tutorial is counted as passing.
+This delivery provides the portable contract subset, executable browser foundations, and W1 static scenes/assets. **The complete shared-JS cross-host acceptance gate is still open:** the native QuickJS launcher/facade belongs to N. Native references use real C++ HARFANG, not native JavaScript. No unsupported feature or unported native tutorial is counted as passing.
 
 ## Recorded validation
 
-`python tools/validate.py` builds `dist/web`, runs the same browser suite available at `/tests/`, then drives real DOM input and lifecycle actions. The recorded run passed **32 conformance cases**, including nine tutorial cases, and all browser integration checks. It used Chrome 154.0.8037.97 with WebGL 2 through ANGLE SwiftShader. This is software-rendered desktop validation; hardware GPUs, Firefox/WebKit/mobile and native QuickJS remain unvalidated.
+`python tools/validate.py --native-render` builds `dist/web`, checks the offline writer, runs the browser suite at `/tests/`, drives real DOM input/lifecycle actions and compares native room renders. The recorded run passed **47 browser cases**, including 15 tutorial cases, **seven compiler cases**, and all browser integration checks. It used Chrome 154.0.8037.97 with WebGL 2 through ANGLE SwiftShader, plus native C++ HARFANG with bgfx OpenGL. Browser hardware GPUs, Firefox/WebKit/mobile and native QuickJS remain unvalidated.
 
 The machine-readable result is generated at `build/reports/validation.json`; fixed-time captures are beside it. Generated reports/builds are ignored by git. The checked-in tutorial manifest is deliberately execution-neutral and retains native/browser statuses independently; each run's report is authoritative for that run.
 
@@ -35,7 +35,26 @@ Each case uses the same `examples/tutorials/application.js` source and bare `har
 | `scene_lua_script.js` | Fresh JS behavior instances, parameter/value/function/handle communication, missing-call error; no Lua VM |
 | `render_resize_to_window.lines` | Named reduced derivative using orthographic line drawing; does not claim the original model-rendering tutorial passes |
 
-`contract/tutorials.json` preserves the specification's **25 retained, 12 deferred, 19 excluded** families, plus the named resize derivative. Later retained families remain unported; deferred/excluded cases never inflate success counts. W1's model, image, filesystem-assets and structural PBR examples are not implemented here.
+`contract/tutorials.json` preserves the specification's **25 retained, 12 deferred, 19 excluded** families, plus named derivatives and the supplemental room. Later retained families remain unported; deferred/excluded cases never inflate success counts.
+
+## W1 results
+
+The room is built from one source tree into native and web assets. Both raw native JSON and native binary input converted offline load through the browser scene reader. Native scene-state references compare all transforms, parents, enabled flags, camera settings/current selection, material values/textures and slot names. The fixture includes a nonuniformly scaled parent, negative scale, two cameras, a disabled node, UV seams, and two material slots. Original JSON bytes remain unchanged.
+
+The browser renders the same room as the native C++ forward pipeline using the fixture's unlit shader. At 256x256, perspective/orthographic RGB channel mean absolute errors were **0.344/0.322 out of 255**, with **1.28%/1.35%** of pixels exceeding 16 in any channel. Both pass the declared thresholds of mean error below 2 and fewer than 3% such pixels. These tolerate edge sampling differences; they are not PBR or native-JS parity claims.
+
+| W1 case | Evidence |
+| --- | --- |
+| `scene_static_room` | Both native camera renders, numeric/material references, camera switching, visibility, repeated CPU/GPU release |
+| `draw_model_no_pipeline` | Fixed native cube/plane construction, original mdl normal-lighting adapter and transforms, deterministic drawing |
+| `render_resize_to_window` | Original cube/camera/projection, browser drawing-buffer resize; earlier line derivative retained separately |
+| `filesystem_assets` | Compiled logical `pictures/owl.jpg`, valid texture and dimensions; async API and supplemental preview |
+| `picture_load` | Decoded compiled JPEG and dimensions; original source-filesystem access replaced by compiled ID |
+| `scene_pbr.structure` | Unmodified 15-node, 13-object tutorial body and native assignments; explicit opaque unlit colors only |
+
+Compiler checks cover deterministic output, payload hashes, seam-preserving buffers/native winding, missing dependencies/material slots, output-directory protection, unsupported features, native compiled geometry rejection, and binary conversion. Browser checks add malformed indices/bounds/truncation, missing/corrupt images, integrity failure, transactional cancellation, unsupported features, texture orientation, and repeated scene disposal. Runtime network requests remain within the packaged modules, test fixtures and `assets-web`; source/native asset directories are never requested.
+
+The web asset package has 43 entries totaling 12,510,947 logical payload bytes, mostly the original PBR tutorial images preserved for structural dependency provenance. Structural rendering does not decode/sample those PBR images. Native/web asset tooling, ownership and limitations are detailed in [static assets](static-assets.md). The offline writer is a prototype frontend using native readers, not an upstream `assetc --target web` integration.
 
 ## Native reference provenance
 
@@ -49,4 +68,4 @@ Regenerate with a compatible local native module, for example from the workspace
 python tools/native_fixtures.py --module-dir ../build/python-cmake/languages/hg_python/Release --dll-dir ../build/python-cmake/languages/hg_python/bdist_wheel/harfang --native-build 50625de17460342c2d69c536c4e80e0c91400523
 ```
 
-Normal browser validation consumes the checked-in fixtures and does not require a native installation. Before ratifying a native release, regenerate them from that release and run the shared tutorial suite against its QuickJS adapter. Full C completion also requires native ownership/type conversion, native portable-mode enforcement and native async/job scheduling tests from N.
+W0 math validation consumes checked-in fixtures. W1 asset generation additionally uses the native bridge and assetc; once generated, the packaged browser suite runs without those tools. Native room/state captures use the same existing native library build noted above. Before ratifying a native release, regenerate references from that release and run the shared tutorial suite against its QuickJS adapter. Full C completion also requires native ownership/type conversion, native portable-mode enforcement and native async/job scheduling tests from N.

@@ -40,18 +40,28 @@
       "sourceSHA256": "166d0fa8d3f7890d3bfe6ac723e751abd764c940cbaf6053a0e074a1c5af25d7",
       "caseId": "render_resize_to_window",
       "classification": "retained",
-      "slice": "W0-W1",
-      "requires": [],
-      "adaptations": [],
-      "assetRecipe": "Pending applicable slice.",
+      "slice": "W1",
+      "requires": [
+        "render.mesh",
+        "assets.images"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "tools/build_assets.py; compiled pictures/owl.jpg for image cases; reviewed mdl adapter for fixed cube/plane.",
       "seed": null,
-      "checkpoints": [],
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
       "assertions": "W0-W1 | Resize/projection agreement and correct drawing-buffer dimensions; native window and browser canvas use their own host mechanisms",
-      "visualTolerance": null,
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
       "executionStatus": {
         "nativeOriginal": "not-run",
         "nativeJS": "not-ported",
-        "browser": "not-ported"
+        "browser": "not-run"
       }
     },
     {
@@ -235,17 +245,27 @@
       "caseId": "draw_model_no_pipeline",
       "classification": "retained",
       "slice": "W1",
-      "requires": [],
-      "adaptations": [],
-      "assetRecipe": "Pending applicable slice.",
+      "requires": [
+        "render.mesh",
+        "assets.images"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "tools/build_assets.py; compiled pictures/owl.jpg for image cases; reviewed mdl adapter for fixed cube/plane.",
       "seed": null,
-      "checkpoints": [],
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
       "assertions": "W1 | Cube/plane creation, explicit transforms, basic program/vertex-layout mapping, draw submission without a scene pipeline",
-      "visualTolerance": null,
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
       "executionStatus": {
         "nativeOriginal": "not-run",
         "nativeJS": "not-ported",
-        "browser": "not-ported"
+        "browser": "not-run"
       }
     },
     {
@@ -254,18 +274,28 @@
       "sourceSHA256": "412364028c39a7150fc276a9b358a0fa2bade6b2206c7cf97f510b90f95f1c8d",
       "caseId": "filesystem_assets",
       "classification": "retained",
-      "slice": "W1/W4",
-      "requires": [],
-      "adaptations": [],
-      "assetRecipe": "Pending applicable slice.",
+      "slice": "W1",
+      "requires": [
+        "render.mesh",
+        "assets.images"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "tools/build_assets.py; compiled pictures/owl.jpg for image cases; reviewed mdl adapter for fixed cube/plane.",
       "seed": null,
-      "checkpoints": [],
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
       "assertions": "W1/W4 | Resolve `pictures/owl.jpg` through the compiled asset namespace and report a valid texture with correct dimensions; use an async resource API",
-      "visualTolerance": null,
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
       "executionStatus": {
         "nativeOriginal": "not-run",
         "nativeJS": "not-ported",
-        "browser": "not-ported"
+        "browser": "not-run"
       }
     },
     {
@@ -274,18 +304,28 @@
       "sourceSHA256": "12322f993bb498f2f12529806ccb38099d6c2dda6653059fd22c3e521ab5f859",
       "caseId": "picture_load",
       "classification": "retained",
-      "slice": "W1/W4",
-      "requires": [],
-      "adaptations": [],
-      "assetRecipe": "Pending applicable slice.",
+      "slice": "W1",
+      "requires": [
+        "render.mesh",
+        "assets.images"
+      ],
+      "adaptations": [
+        "Scheduled lifecycle; canvas-scoped input; context renderer; no native busy loop."
+      ],
+      "assetRecipe": "tools/build_assets.py; compiled pictures/owl.jpg for image cases; reviewed mdl adapter for fixed cube/plane.",
       "seed": null,
-      "checkpoints": [],
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
       "assertions": "W1/W4 | Decode an ordinary image and report its dimensions; replace the source-folder filesystem path with a compiled logical asset ID",
-      "visualTolerance": null,
+      "visualTolerance": "Feature/pixel-region checks; no pixel parity claim.",
       "executionStatus": {
         "nativeOriginal": "not-run",
         "nativeJS": "not-ported",
-        "browser": "not-ported"
+        "browser": "not-run"
       }
     },
     {
@@ -1220,6 +1260,70 @@
       ],
       "assertions": "Canvas resize updates projection and dimensions.",
       "visualTolerance": "Aspect/numeric checks.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": "scene_pbr",
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "caseId": "scene_pbr.structure",
+      "classification": "retained-derivative",
+      "slice": "W1",
+      "requires": [
+        "scene.static",
+        "scene.hierarchy",
+        "scene.camera",
+        "render.mesh",
+        "material.unlit",
+        "assets.images"
+      ],
+      "adaptations": [
+        "Original JSON and assignments preserved; explicit opaque unlit diagnostic colors; no PBR/light/environment rendering."
+      ],
+      "assetRecipe": "tools/build_assets.py: shared native/web assets and native scene-state references.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "Native hierarchy, transforms, camera, material assignment and cleanup; room also compares native rendered views.",
+      "visualTolerance": "Room: channel MAE < 2/255 and < 3% pixels with any channel error > 16/255. PBR structure: no appearance parity claim.",
+      "executionStatus": {
+        "nativeOriginal": "not-run",
+        "nativeJS": "not-ported",
+        "browser": "not-run"
+      }
+    },
+    {
+      "sourceFamily": null,
+      "sourceRevision": "5fe83f1adabf26294003be4c6e13ea068413b5d9",
+      "caseId": "scene_static_room",
+      "classification": "supplemental-fixture",
+      "slice": "W1",
+      "requires": [
+        "scene.static",
+        "scene.hierarchy",
+        "scene.camera",
+        "render.mesh",
+        "material.unlit",
+        "assets.images"
+      ],
+      "adaptations": [],
+      "assetRecipe": "tools/build_assets.py: shared native/web assets and native scene-state references.",
+      "seed": null,
+      "checkpoints": [
+        0,
+        16,
+        32,
+        48
+      ],
+      "assertions": "Native hierarchy, transforms, camera, material assignment and cleanup; room also compares native rendered views.",
+      "visualTolerance": "Room: channel MAE < 2/255 and < 3% pixels with any channel error > 16/255. PBR structure: no appearance parity claim.",
       "executionStatus": {
         "nativeOriginal": "not-run",
         "nativeJS": "not-ported",

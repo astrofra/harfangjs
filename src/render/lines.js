@@ -90,7 +90,7 @@ export class LineRenderer {
       maxViewportDimensions: [...gl.getParameter(gl.MAX_VIEWPORT_DIMS)],
       antialias: gl.getContextAttributes().antialias});
     this.#buffer = gl.createBuffer(); this.#vao = gl.createVertexArray();
-    if (!this.#buffer || !this.#vao) { this.dispose(); throw new HarfangError('GPU_ALLOCATION_FAILED', 'Cannot allocate line buffers'); }
+    if (!this.#buffer || !this.#vao) { LineRenderer.prototype.dispose.call(this); throw new HarfangError('GPU_ALLOCATION_FAILED', 'Cannot allocate line buffers'); }
   }
   #alive() {
     requireCondition(!this.#disposed, 'DISPOSED', 'Renderer is disposed');
@@ -123,7 +123,7 @@ export class LineRenderer {
     this.#gl.deleteProgram(this.#programs.get(token).program);
     this.#programs.release(token); this.#livePrograms.delete(wrapper);
   }
-  beginFrame(color = new Color(0.04, 0.05, 0.07)) {
+  beginFrame(color = new Color(0.04, 0.05, 0.07), {clearColor = true, clearDepth = true} = {}) {
     this.#alive();
     requireCondition(color instanceof Color, 'INVALID_ARGUMENT', 'Clear color requires Color');
     const gl = this.#gl;
@@ -131,7 +131,8 @@ export class LineRenderer {
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE); gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LESS); gl.depthMask(true); gl.clearDepth(1);
-    gl.clearColor(color.r, color.g, color.b, color.a); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.colorMask(true,true,true,true); gl.disable(gl.SCISSOR_TEST);
+    gl.clearColor(color.r, color.g, color.b, color.a); gl.clear((clearColor ? gl.COLOR_BUFFER_BIT : 0) | (clearDepth ? gl.DEPTH_BUFFER_BIT : 0));
   }
   drawLines(vertices, wrapper, matrix = Mat44.Identity) {
     this.#alive();
