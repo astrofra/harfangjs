@@ -3,7 +3,7 @@ import {profile, requireCapabilities, validateLogicalPath} from '../profile.js';
 import {materialContract} from '../render/material-contract.js';
 
 export const nullReference = value => value === null || value === undefined || value === 4294967295;
-export function validateSceneJSON(scene, {source = 'scene', structure = false, lighting = false, ignoreShadows = false, ambientEnvironment = false, maxNodes=profile.limits.maxNodes} = {}) {
+export function validateSceneJSON(scene, {source = 'scene', structure = false, lighting = false, ignoreShadows = false, ambientEnvironment = false, maxNodes=profile.limits.maxNodes, instances=false, animationStubs=false, nativeUniforms=false} = {}) {
   const check = (ok, message, path = '') => requireCondition(ok, 'INVALID_SCENE', message, `${source}${path}`);
   check(scene && typeof scene === 'object' && !Array.isArray(scene), 'Expected native JSON scene object');
   requireCapabilities(scene.requires ?? [], source);
@@ -16,6 +16,7 @@ export function validateSceneJSON(scene, {source = 'scene', structure = false, l
   };
   for (const key of fields) check(scene[key] === undefined || scene[key] === null || Array.isArray(scene[key]), `${key} must be an array`);
   for (const key of ['instances', 'anims', 'scene_anims', 'rigid_bodies', 'collisions', 'scripts', 'scene_scripts', 'videos']) {
+    if((key==='instances'&&instances)||(['anims','scene_anims'].includes(key)&&animationStubs))continue;
     requireCondition(!scene[key]?.length, 'UNSUPPORTED_SCENE_FEATURE', `${key} is not implemented by W1`, source);
   }
   requireCondition(lighting || structure || !scene.lights?.length, 'UNSUPPORTED_SCENE_FEATURE', 'Lighting requires a forward scene', source);
@@ -33,11 +34,16 @@ export function validateSceneJSON(scene, {source = 'scene', structure = false, l
       const ref = node.components[slot];
       if (!nullReference(ref)) check(Number.isInteger(ref) && ref >= 0 && ref < list.length, `Invalid component reference at slot ${slot}`, path);
     });
-    requireCondition((lighting || structure || nullReference(node.components[3])) && nullReference(node.components[4]) && nullReference(node.instance) && !node.collisions?.length && !node.scripts?.length,
+    if(instances&&!nullReference(node.instance))check(Number.isInteger(node.instance)&&node.instance>=0&&node.instance<(scene.instances?.length??0),'Invalid instance reference',path);
+    requireCondition((lighting || structure || nullReference(node.components[3])) && nullReference(node.components[4]) && (instances||nullReference(node.instance)) && !node.collisions?.length && !node.scripts?.length,
       'UNSUPPORTED_SCENE_FEATURE', 'Required node component is outside W1', `${source}${path}`);
     if (!nullReference(node.components[1]) || !nullReference(node.components[2]) || !nullReference(node.components[3])) check(!nullReference(node.components[0]), 'Camera/object/light node requires a transform', path);
   });
   const vec = (v, count, path) => check(Array.isArray(v) && v.length === count && v.every(Number.isFinite), 'Invalid numeric vector', path);
+  if(instances)for(const [i,instance] of (scene.instances??[]).entries()) {
+    only(instance,['name','anim','loop_mode'],`.instances[${i}]`);validateLogicalPath(instance.name);
+    requireCondition(animationStubs||!instance.anim,'UNSUPPORTED_SCENE_FEATURE','Instance animation playback is unavailable',source);
+  }
   transforms.forEach((t, i) => {
     only(t, ['pos','rot','scl','parent'], `.transforms[${i}]`);
     ['pos', 'rot', 'scl'].forEach(key => vec(t[key], 3, `.transforms[${i}].${key}`));
@@ -63,7 +69,7 @@ export function validateSceneJSON(scene, {source = 'scene', structure = false, l
     validateLogicalPath(object.name);
     requireCondition(!object.bones?.length, 'UNSUPPORTED_SCENE_FEATURE', 'Skinning requires W7', `${source}.objects[${i}]`);
     check(Array.isArray(object.materials) && object.materials.length > 0, 'Object has no materials', `.objects[${i}]`);
-    for (let slot = 0; slot < object.materials.length; ++slot) validateMaterial(object.materials[slot], {source: `${source}.objects[${i}].materials[${slot}]`, structure, lighting});
+    for (let slot = 0; slot < object.materials.length; ++slot) validateMaterial(object.materials[slot], {source: `${source}.objects[${i}].materials[${slot}]`, structure, lighting, nativeUniforms});
   });
   if (lighting) for (const [i, light] of (scene.lights ?? []).entries()) validateLight(light, {source:`${source}.lights[${i}]`, ignoreShadows});
   const current = scene.environment?.current_camera;
@@ -85,7 +91,7 @@ export function validateSceneJSON(scene, {source = 'scene', structure = false, l
   return scene;
 }
 
-export function validateMaterial(material, {source = 'material', structure = false, lighting = true} = {}) {
+export function validateMaterial(material, {source = 'material', structure = false, lighting = true, nativeUniforms=false} = {}) {
   const diagnostic = structure && material?.program === 'core/shader/pbr.hps';
   const family = Object.hasOwn(materialContract.families,material?.program) ? materialContract.families[material.program] : undefined;
   requireCondition(family && (lighting || material.program === 'shaders/unlit.hps' || diagnostic), 'UNSUPPORTED_PROGRAM', 'No approved material adapter in this scene profile', source);
@@ -99,7 +105,7 @@ export function validateMaterial(material, {source = 'material', structure = fal
   const names = new Set(), samplers = new Set();
   for (const v of material.values ?? []) {
     requireCondition(v?.type === 'vec4' && (v.count ?? 1) === 1 && Array.isArray(v.value) && v.value.length === 4 && v.value.every(n => Number.isFinite(n) && Number.isFinite(Math.fround(n))), 'INVALID_MATERIAL', 'Expected one finite float32 vec4 material value', source);
-    requireCondition(Object.hasOwn(family.values,v.name), 'UNSUPPORTED_MATERIAL', `Unknown uniform ${v.name}`, source);
+    requireCondition(Object.hasOwn(family.values,v.name)||(nativeUniforms&&Object.hasOwn(family.nativeInactiveValues??{},v.name)), 'UNSUPPORTED_MATERIAL', `Unknown uniform ${v.name}`, source);
     requireCondition(!names.has(v.name), 'INVALID_MATERIAL', `Duplicate uniform ${v.name}`, source); names.add(v.name);
   }
   for (const texture of material.textures ?? []) {

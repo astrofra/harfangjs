@@ -24,7 +24,7 @@ export class InstancedForwardRenderer {
   checkBudget(bytes) { requireCondition(this.stats.gpuBytes+bytes<=profile.limits.maxGPUBytes,'RESOURCE_BUDGET','Native forward GPU budget exceeded (128 MiB)'); }
   prepare(program) {
     this.alive();
-    requireCondition(['default-spot-instanced/1','pbr-scene-instanced/1'].includes(program.adapter), 'UNSUPPORTED_PROGRAM', 'Unknown compiled program adapter');
+    requireCondition(['default-spot-instanced/1','pbr-scene-instanced/1','pbr-scene-instanced/2'].includes(program.adapter), 'UNSUPPORTED_PROGRAM', 'Unknown compiled program adapter');
     if (this.program === program) return;
     requireCondition(!this.program, 'UNSUPPORTED_PROGRAM', 'This renderer supports one compiled program family');
     const start = performance.now(), made = [];
@@ -40,7 +40,7 @@ export class InstancedForwardRenderer {
         handle = gl.createProgram(); requireCondition(handle,'GPU_ALLOCATION_FAILED','Cannot allocate program');
         shaders.forEach(shader => gl.attachShader(handle,shader)); gl.linkProgram(handle);
         requireCondition(gl.getProgramParameter(handle,gl.LINK_STATUS),'SHADER_FAILED',gl.getProgramInfoLog(handle));
-        const names = 'viewProjection view shadowProjection eye ambient fogColor fog lightPos lightDir lightDiffuse lightSpecular base surface self shadowMap hasShadow shadowBias shadowTexel linearProjection[0] linearSplits linearShadowMap linearShadowBias linearShadowTexel hasLinearShadow hasBaseMap baseMap brdfMap irradianceMap radianceMap hasEnvironment'.split(' ');
+        const names = 'viewProjection view shadowProjection eye ambient fogColor fog lightPos lightDir lightDiffuse lightSpecular base surface self shadowMap hasShadow shadowBias shadowTexel linearProjection[0] linearSplits linearShadowMap linearShadowBias linearShadowTexel hasLinearShadow hasBaseMap baseMap brdfMap irradianceMap radianceMap hasEnvironment normalMap ormMap hasNormalMap hasORMMap'.split(' ');
         return {handle,uniforms:Object.fromEntries(names.map(name => [name,gl.getUniformLocation(handle,`u_${name}`)]))};
       } catch (error) { if (handle) gl.deleteProgram(handle); throw error; }
       finally { shaders.forEach(shader => gl.deleteShader(shader)); }
@@ -85,7 +85,7 @@ export class InstancedForwardRenderer {
     const key = `${mesh.id}/${submeshIndex}/${material.batchKey}`;
     if (this.batches.has(key)) return this.batches.get(key);
     const state = material.source;
-    const pbr=this.program.adapter==='pbr-scene-instanced/1';
+    const pbr=this.program.adapter.startsWith('pbr-scene-instanced/');
     requireCondition(material.family===(pbr?'pbr':'default') && (pbr||!material.textures().length) && !(state.flags?.length) &&
       (state.blend_mode??'opaque')==='opaque', 'UNSUPPORTED_MATERIAL', 'Native forward pilot supports opaque, untextured default materials');
     const gl = this.gl, batch = {mesh,material,state,submesh:mesh.data.submeshes[submeshIndex],count:0,
@@ -97,6 +97,10 @@ export class InstancedForwardRenderer {
     gl.bindVertexArray(batch.vao); gl.bindBuffer(gl.ARRAY_BUFFER,mesh.vertices); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.indices);
     for (let i=0;i<2;++i) { gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i,3,gl.FLOAT,false,mesh.data.stride*4,i*12); }
     gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,2,gl.FLOAT,false,mesh.data.stride*4,24);
+    if(mesh.data.stride===14) {
+      gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,3,gl.FLOAT,false,56,32);
+      gl.enableVertexAttribArray(8);gl.vertexAttribPointer(8,3,gl.FLOAT,false,56,44);
+    } else requireCondition(!material.texture('uNormalMap'),'INVALID_MESH','Normal maps require compiled tangent frames');
     gl.bindBuffer(gl.ARRAY_BUFFER,batch.buffer);
     for(let i=0;i<4;++i) { gl.enableVertexAttribArray(4+i); gl.vertexAttribPointer(4+i,4,gl.FLOAT,false,64,i*16); gl.vertexAttribDivisor(4+i,1); }
     gl.bindVertexArray(null); this.batches.set(key,batch); ++this.stats.instanceBuffers; return batch;
@@ -134,15 +138,15 @@ export class InstancedForwardRenderer {
     }
     this.stats.instances=instances;
   }
-  ensureShadow(pipeline) {
-    if(this.shadow?.resolution===pipeline.resolution && this.shadow?.sixteenBit===pipeline.sixteenBit) return;
-    this.releaseShadow();
+  ensureShadow(pipeline,slot='shadow') {
+    if(this[slot]?.resolution===pipeline.resolution && this[slot]?.sixteenBit===pipeline.sixteenBit) return;
+    this.releaseShadow(slot);
     const gl=this.gl, size=pipeline.resolution;
     requireCondition(size<=Math.min(this.capabilities.maxTextureSize,this.capabilities.maxRenderbufferSize),
       'SHADOW_LIMIT',`Requested ${size} shadow map exceeds device limits`);
     this.checkBudget(size*size*(pipeline.sixteenBit?2:4));
     const shadow={resolution:size,sixteenBit:pipeline.sixteenBit,texture:gl.createTexture(),framebuffer:gl.createFramebuffer(),bytes:size*size*(pipeline.sixteenBit?2:4)};
-    this.shadow=shadow;
+    this[slot]=shadow;
     requireCondition(shadow.texture&&shadow.framebuffer,'GPU_ALLOCATION_FAILED','Cannot allocate spotlight shadow map');
     gl.bindTexture(gl.TEXTURE_2D,shadow.texture);
     gl.texImage2D(gl.TEXTURE_2D,0,pipeline.sixteenBit?gl.DEPTH_COMPONENT16:gl.DEPTH_COMPONENT32F,size,size,0,
@@ -154,13 +158,13 @@ export class InstancedForwardRenderer {
     gl.drawBuffers([gl.NONE]); gl.readBuffer(gl.NONE);
     requireCondition(gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE && gl.getError()===gl.NO_ERROR,
       'SHADOW_ALLOCATION_FAILED',`Cannot render a ${size} depth shadow map`);
-    shadow.accounted=true; this.stats.gpuBytes+=shadow.bytes; this.stats.shadowMaps=1; this.stats.shadowResolution=size;
+    shadow.accounted=true; this.stats.gpuBytes+=shadow.bytes; this.stats.shadowMaps=[this.shadow,this.spotShadow].filter(v=>v?.accounted).length; this.stats.shadowResolution=size;
   }
-  releaseShadow() {
-    if(!this.shadow) return;
-    this.gl.deleteTexture(this.shadow.texture); this.gl.deleteFramebuffer(this.shadow.framebuffer);
-    if(this.shadow.accounted) this.stats.gpuBytes-=this.shadow.bytes;
-    this.shadow=undefined; this.stats.shadowMaps=0; this.stats.shadowResolution=0;
+  releaseShadow(slot='shadow') {
+    const shadow=this[slot];if(!shadow) return;
+    this.gl.deleteTexture(shadow.texture); this.gl.deleteFramebuffer(shadow.framebuffer);
+    if(shadow.accounted) this.stats.gpuBytes-=shadow.bytes;
+    this[slot]=undefined; this.stats.shadowMaps=[this.shadow,this.spotShadow].filter(v=>v?.accounted).length; this.stats.shadowResolution=0;
   }
   submit(scene,pipeline) {
     this.alive(); requireCondition(this.forward,'PROGRAM_NOT_READY','Load a compiled forward program first');

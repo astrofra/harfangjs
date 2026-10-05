@@ -45,7 +45,9 @@ export async function loadProgramAssets(manifestURL, signal) {
     }
     const program=JSON.parse(new TextDecoder().decode(bytes));
     if(entry.kind==='scene') {
-      validateSceneJSON(program,{source:id,lighting:true,ignoreShadows:true,ambientEnvironment:true,maxNodes:profile.limits.maxNodes});
+      validateSceneJSON(program,{source:id,lighting:true,ignoreShadows:true,ambientEnvironment:true,maxNodes:profile.limits.maxNodes,
+        instances:true,animationStubs:manifest.animationPlayback==='stub',nativeUniforms:true});
+      requireCondition(!program.environment?.probe?.parallax,'UNSUPPORTED_SCENE_FEATURE','Parallax-corrected probes are unavailable');
       scenes.set(id,program);return;
     }
     if(entry.kind==='geometry') {
@@ -54,7 +56,9 @@ export async function loadProgramAssets(manifestURL, signal) {
     }
     const approved={
       'core/shader/default.hps':['default-spot-instanced/1','untextured-unskinned',profile.capabilities],
-      'core/shader/pbr.hps':['pbr-scene-instanced/1','base-color-unskinned',['render.forward','render.directional-shadow','render.environment','render.textures']],
+      'core/shader/pbr.hps':program.adapter==='pbr-scene-instanced/2'?
+        ['pbr-scene-instanced/2','pbr-maps-unskinned',['render.forward','render.directional-shadow','render.spot-shadow','render.environment','render.textures']]:
+        ['pbr-scene-instanced/1','base-color-unskinned',['render.forward','render.directional-shadow','render.environment','render.textures']],
       'shaders/pos_rgb':['pos-rgb/1','color',['render.lines']]
     }[id];
     requireCondition(approved && program.schema==='harfang-web-program/1' && program.adapter===approved[0] && program.logicalId===id &&

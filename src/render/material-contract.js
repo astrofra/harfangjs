@@ -10,6 +10,7 @@ export const materialContract = {
     },
     "core/shader/pbr.hps": {
       "family": "pbr", "values": {"uBaseOpacityColor": [0, 0, 0, 0], "uOcclusionRoughnessMetalnessColor": [1, 1, 0, 0], "uSelfColor": [0, 0, 0, 0]},
+      "nativeInactiveValues": {"uDiffuseColor": [0, 0, 0, 0], "uSpecularColor": [0, 0, 0, 1]},
       "textures": {"uBaseOpacityMap": 0, "uOcclusionRoughnessMetalnessMap": 1, "uNormalMap": 2, "uSelfMap": 4}, "flags": ["EnableAlphaCut"]
     }
   },

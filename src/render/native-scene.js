@@ -1,7 +1,7 @@
 import {InstancedForwardRenderer} from './instanced-forward.js';
-import {Mat4,Mat44,Vec2,Vec3,Vec4,Inverse,GetZ,ComputeAspectRatioX,ComputeOrthographicProjectionMatrix,Len} from '../core/math.js';
+import {Mat4,Mat44,Vec2,Vec3,Vec4,Inverse,GetZ,ComputeAspectRatioX,ComputeOrthographicProjectionMatrix,ComputePerspectiveProjectionMatrix,FovToZoomFactor,Len} from '../core/math.js';
 import {requireCondition} from '../core/errors.js';
-import {LT_Linear} from '../scene/scene.js';
+import {LT_Linear,LT_Spot} from '../scene/scene.js';
 import {frameLighting,applyMaterialState} from './forward.js';
 
 // Same split construction and texel stabilization as GenerateLinearShadowMapForForwardPipeline.
@@ -32,7 +32,7 @@ export function directionalShadowMatrices(scene,lightNode,projection,resolution)
   return result;
 }
 
-// Native scene profile: compiled opaque PBR, global IBL, base color maps and four directional splits.
+// Native scene profile: opaque PBR maps, global IBL, directional splits and one spot shadow.
 export class NativeSceneRenderer extends InstancedForwardRenderer {
   constructor(canvas,options) {
     super(canvas,options);this.textures=new Map();this.stats.textures=0;
@@ -47,7 +47,7 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
       'TEXTURE_LIMIT','Texture exceeds device limits');
     const handle=gl.createTexture();requireCondition(handle,'GPU_ALLOCATION_FAILED','Cannot create texture');
     try {
-      gl.activeTexture(gl.TEXTURE7);gl.bindTexture(target,handle);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+      gl.activeTexture(gl.TEXTURE8);gl.bindTexture(target,handle);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
       for(const level of record.levels) {
         const half=record.format==='rgba16f',data=half?new Uint16Array(record.bytes,level.offset,level.byteLength/2):new Uint8Array(record.bytes,level.offset,level.byteLength);
         gl.texImage2D(record.faces===6?gl.TEXTURE_CUBE_MAP_POSITIVE_X+level.face:target,level.mip,half?gl.RGBA16F:gl.RGBA8,
@@ -81,15 +81,19 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
     this.stats.gpuBytes+=30;
   }
   submit(scene,pipeline) {
-    this.alive();requireCondition(this.program?.adapter==='pbr-scene-instanced/1','PROGRAM_NOT_READY','Load a compiled PBR program first');
+    this.alive();requireCondition(this.program?.adapter.startsWith('pbr-scene-instanced/'),'PROGRAM_NOT_READY','Load a compiled PBR program first');
     this.collect(scene);this.fallbackTextures();
     const gl=this.gl,{view,proj,viewProjection}=scene.ComputeCurrentCameraViewState(ComputeAspectRatioX(this.canvas.width,this.canvas.height));
     const frame=frameLighting(scene,view),lights=scene.GetLights().filter(n=>n.IsEnabled());
     const directional=lights.filter(n=>n.GetLight().GetType()===LT_Linear).sort((a,b)=>b.GetLight().GetPriority()-a.GetLight().GetPriority())[0];
-    requireCondition(!lights.some(n=>n.GetLight().GetType()!==LT_Linear&&n.GetLight().GetShadowType()===1),'UNSUPPORTED_SHADOW','The native scene profile supports directional shadows');
+    const locals=lights.filter(n=>n.GetLight().GetType()!==LT_Linear).sort((a,b)=>b.GetLight().GetPriority()-a.GetLight().GetPriority());
+    const shadowLocals=locals.filter(n=>n.GetLight().GetShadowType()===1);
+    requireCondition(shadowLocals.length<=1&&(!shadowLocals.length||(shadowLocals[0].equals(locals[0])&&locals[0].GetLight().GetType()===LT_Spot)),
+      'UNSUPPORTED_SHADOW','Only the highest-priority local spotlight may cast shadows');
+    const spot=shadowLocals[0]?.GetLight();let spotMatrix=Mat44.Identity;
     const light=directional?.GetLight().GetShadowType()===1?directional.GetLight():undefined;
     const matrices=light?directionalShadowMatrices(scene,directional,proj,pipeline.resolution):Array(4).fill(Mat44.Identity);
-    Object.assign(this.stats,{drawCalls:0,shadowDrawCalls:0,triangles:0,shadowTriangles:0,shadowPasses:light?4:0,shadowAtlasSize:light?pipeline.resolution*2:0});
+    Object.assign(this.stats,{drawCalls:0,shadowDrawCalls:0,triangles:0,shadowTriangles:0,shadowPasses:(light?4:0)+(spot?1:0),shadowAtlasSize:light?pipeline.resolution*2:0});
     if(light) {
       this.ensureShadow({resolution:pipeline.resolution*2,sixteenBit:pipeline.sixteenBit});this.stats.shadowResolution=pipeline.resolution;
       gl.bindFramebuffer(gl.FRAMEBUFFER,this.shadow.framebuffer);gl.enable(gl.SCISSOR_TEST);
@@ -105,7 +109,19 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
         }
       }
       gl.disable(gl.SCISSOR_TEST);
-    } else this.releaseShadow();
+    } else this.releaseShadow('shadow');
+    if(spot) {
+      this.ensureShadow(pipeline,'spotShadow');
+      const [ok,lightView]=Inverse(shadowLocals[0].GetTransform().GetWorld());requireCondition(ok,'INVALID_LIGHT','Singular spotlight transform');
+      spotMatrix=ComputePerspectiveProjectionMatrix(spot.GetShadowNear(),spot.GetShadowFar(),FovToZoomFactor(2*spot.GetOuterAngle()),new Vec2(1,1)).mul(new Mat44(lightView));
+      gl.bindFramebuffer(gl.FRAMEBUFFER,this.spotShadow.framebuffer);gl.viewport(0,0,pipeline.resolution,pipeline.resolution);
+      gl.colorMask(false,false,false,false);gl.depthMask(true);gl.clearDepth(1);gl.clear(gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(this.depth.handle);gl.uniformMatrix4fv(this.depth.uniforms.viewProjection,false,spotMatrix.data);
+      for(const batch of this.batches.values()) {
+        applyMaterialState(gl,{...batch.state,write_r:false,write_g:false,write_b:false,write_a:false,write_z:true});
+        this.draw(batch);++this.stats.shadowDrawCalls;this.stats.shadowTriangles+=batch.submesh.indexCount/3*batch.count;
+      }
+    } else this.releaseShadow('spotShadow');
     gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,this.canvas.width,this.canvas.height);
     gl.colorMask(true,true,true,true);gl.depthMask(true);gl.clearColor(...scene.canvas.color.data);gl.clearDepth(1);
     gl.clear((scene.canvas.clear_color?gl.COLOR_BUFFER_BIT:0)|(scene.canvas.clear_z?gl.DEPTH_BUFFER_BIT:0));
@@ -114,6 +130,8 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
     gl.uniformMatrix4fv(u['linearProjection[0]'],false,new Float32Array(matrices.flatMap(m=>[...m.data])));
     gl.uniform4fv(u.linearSplits,light?.GetPSSMSplit().data??[10,50,100,500]);gl.uniform1i(u.hasLinearShadow,!!light);
     gl.uniform1f(u.linearShadowBias,light?.GetShadowBias()??0);gl.uniform1f(u.linearShadowTexel,1/(2*pipeline.resolution));
+    gl.uniformMatrix4fv(u.shadowProjection,false,spotMatrix.data);gl.uniform1i(u.hasShadow,!!spot);
+    gl.uniform1f(u.shadowBias,spot?.GetShadowBias()??0);gl.uniform1f(u.shadowTexel,1/pipeline.resolution);
     for(const name of ['eye','ambient','fogColor'])gl.uniform3fv(u[name],frame[name]);gl.uniform2fv(u.fog,frame.fog);
     for(const [name,key] of [['lightPos','positions'],['lightDir','directions'],['lightDiffuse','diffuse'],['lightSpecular','specular']])gl.uniform4fv(u[name],frame.lights[key]);
     const bind=(unit,target,handle,uniform)=>{gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(target,handle);gl.uniform1i(u[uniform],unit);};
@@ -122,14 +140,22 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
     bind(2,gl.TEXTURE_CUBE_MAP,hasEnvironment?this.texture(env.irradiance_map):this.fallbackCube,'irradianceMap');
     bind(3,gl.TEXTURE_CUBE_MAP,hasEnvironment?this.texture(env.radiance_map):this.fallbackCube,'radianceMap');
     bind(4,gl.TEXTURE_2D,this.shadow?.texture??this.fallbackDepth,'linearShadowMap');
+    bind(7,gl.TEXTURE_2D,this.spotShadow?.texture??this.fallbackDepth,'shadowMap');
     for(const batch of this.batches.values()) {
       applyMaterialState(gl,batch.state);const material=batch.material,map=material.texture('uBaseOpacityMap');
       gl.uniform1i(u.hasBaseMap,!!map);bind(0,gl.TEXTURE_2D,map?this.texture(map):this.fallback2D,'baseMap');
+      const normal=material.texture('uNormalMap'),orm=material.texture('uOcclusionRoughnessMetalnessMap');
+      gl.uniform1i(u.hasNormalMap,!!normal);bind(5,gl.TEXTURE_2D,normal?this.texture(normal):this.fallback2D,'normalMap');
+      gl.uniform1i(u.hasORMMap,!!orm);bind(6,gl.TEXTURE_2D,orm?this.texture(orm):this.fallback2D,'ormMap');
       gl.uniform4fv(u.base,material.value('uBaseOpacityColor'));gl.uniform4fv(u.surface,material.value('uOcclusionRoughnessMetalnessColor'));
       gl.uniform4fv(u.self,material.value('uSelfColor'));this.draw(batch);++this.stats.drawCalls;this.stats.triangles+=batch.submesh.indexCount/3*batch.count;
     }
     gl.bindVertexArray(null);requireCondition(gl.getError()===gl.NO_ERROR,'GPU_RENDER_FAILED','WebGL reported a scene rendering error');
     this.stats.viewport=[this.canvas.width,this.canvas.height];
+  }
+  releaseShadow(slot) {
+    if(slot)super.releaseShadow(slot);
+    else {super.releaseShadow('shadow');super.releaseShadow('spotShadow');}
   }
   dispose() {
     if(this.disposed)return;

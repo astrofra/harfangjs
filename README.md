@@ -16,6 +16,14 @@ probes, four directional shadow splits, mouse input and a 2D cursor. Run
 `python experiments/native-game-mouse-flight/serve.py`, then open
 **http://localhost:8002/**.
 
+The [Engine Scene experiment](experiments/native-scene-aaa/README.md) ports
+`scene_aaa.lua` to a shared native/Web JS entry. Web uses forward rendering,
+explicit AAA/animation stubs, PBR normal/ORM maps, scene instances and combined
+directional/spot shadows. Run `python experiments/native-scene-aaa/build.py` and
+`python experiments/native-scene-aaa/serve.py`, then open **http://localhost:8003/**.
+Original filenames are preserved; the experiment compiles PNG textures with a
+1024-pixel limit to stay within the current browser memory budgets.
+
 **Compatibility priority: HG Lua -> native HG JS -> web HG JS.** Native HG JS
 prioritizes conformity with HG Lua. This web implementation adapts on a
 best-effort basis to run native HG JS projects, with documented adaptations and
@@ -28,7 +36,7 @@ by HG Lua, Python and HG JS native. HG JS Web requires a separate, standalone
 native desktop compiler in `tools/native/` for scenes, models, textures and HDR
 probes, distributed for Windows/macOS/Linux on x86-64 and ARM64. Its CLI follows `assetc`, with fewer
 options and a fixed WebGL 2 target (no graphics-backend selection). This product
-is still pending as a complete cross-platform distribution. The two native
+is still pending as a complete cross-platform distribution. The three native
 tutorial experiments now exercise standalone program and static-scene compiler
 slices on Windows x64; see the [compiler specification](../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md).
 

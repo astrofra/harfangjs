@@ -1,20 +1,20 @@
 #version 300 es
-// Reviewed non-AAA PBR, legacy global IBL and four directional splits.
+// Reviewed non-AAA PBR maps, global IBL, directional and spotlight shadows.
 // Derived from HARFANG pbr_fs.sc / forward_pipeline.sh (GPL-3.0).
 precision highp float;
 precision highp sampler2DShadow;
-in vec3 v_world,v_normal;
+in vec3 v_world,v_normal,v_tangent,v_bitangent;
 in vec2 v_uv;
-uniform mat4 u_view,u_linearProjection[4];
+uniform mat4 u_view,u_linearProjection[4],u_shadowProjection;
 uniform vec3 u_eye,u_ambient,u_fogColor;
 uniform vec2 u_fog;
 uniform vec4 u_lightPos[8],u_lightDir[8],u_lightDiffuse[8],u_lightSpecular[8];
 uniform vec4 u_base,u_surface,u_self,u_linearSplits;
-uniform sampler2D u_baseMap,u_brdfMap;
+uniform sampler2D u_baseMap,u_brdfMap,u_normalMap,u_ormMap;
 uniform samplerCube u_irradianceMap,u_radianceMap;
-uniform sampler2DShadow u_linearShadowMap;
-uniform bool u_hasBaseMap,u_hasEnvironment,u_hasLinearShadow;
-uniform float u_linearShadowBias,u_linearShadowTexel;
+uniform sampler2DShadow u_linearShadowMap,u_shadowMap;
+uniform bool u_hasBaseMap,u_hasEnvironment,u_hasLinearShadow,u_hasShadow,u_hasNormalMap,u_hasORMMap;
+uniform float u_linearShadowBias,u_linearShadowTexel,u_shadowBias,u_shadowTexel;
 out vec4 fragColor;
 const float PI=3.14159265358979323846;
 vec3 srgbToLinear(vec3 v) {return mix(pow((v+0.055)/1.055,vec3(2.4)),v*0.0773993808,lessThan(v,vec3(0.04045)));}
@@ -34,9 +34,21 @@ float shadowPCF(int slice) {
   for(int y=0;y<2;++y)for(int x=0;x<2;++x)result+=texture(u_linearShadowMap,vec3(p.xy+(vec2(x,y)-0.5)*u_linearShadowTexel,p.z-u_linearShadowBias));
   return result*0.25;
 }
+float spotShadowPCF() {
+  vec4 clip=u_shadowProjection*vec4(v_world+v_normal*0.01,1.0);vec3 p=clip.xyz/clip.w*0.5+0.5;
+  float result=0.0;
+  for(int y=0;y<2;++y)for(int x=0;x<2;++x)result+=texture(u_shadowMap,vec3(p.xy+(vec2(x,y)-0.5)*u_shadowTexel,p.z-u_shadowBias));
+  return result*0.25;
+}
 void main() {
   vec4 base=u_hasBaseMap?texture(u_baseMap,v_uv):u_base;if(u_hasBaseMap)base.rgb=srgbToLinear(base.rgb);
-  vec3 orm=u_surface.rgb,V=safeNormalize(u_eye-v_world),N=sign(dot(V,v_normal))*safeNormalize(v_normal),R=reflect(-V,N);
+  vec3 orm=u_hasORMMap?texture(u_ormMap,v_uv).rgb:u_surface.rgb;
+  vec3 V=safeNormalize(u_eye-v_world),N=sign(dot(V,v_normal))*safeNormalize(v_normal);
+  if(u_hasNormalMap) {
+    vec2 xy=texture(u_normalMap,v_uv).xy*2.0-1.0;
+    N=safeNormalize(safeNormalize(v_tangent)*xy.x+safeNormalize(v_bitangent)*xy.y+N*sqrt(max(0.0,1.0-dot(xy,xy))));
+  }
+  vec3 R=reflect(-V,N);
   float ndv=clamp(dot(N,V),0.0,0.99),viewZ=(u_view*vec4(v_world,1.0)).z;
   vec3 f0=mix(vec3(0.04),base.rgb,orm.b);float shadow=1.0;
   if(u_hasLinearShadow) {
@@ -51,6 +63,7 @@ void main() {
     float k=u_lightPos[i].w>0.0?max(1.0-dist*u_lightPos[i].w,0.0):1.0;
     float outer=u_lightDiffuse[i].w,inner=u_lightDir[i].w;
     if(outer>0.0){float c=dot(L,u_lightDir[i].xyz);k*=abs(outer-inner)<1e-8?step(inner,c):clamp(1.0-(c-inner)/(outer-inner),0.0,1.0);}
+    if(i==1&&u_hasShadow)k*=spotShadowPCF();
     color+=ggx(V,N,ndv,L,base.rgb,orm.g,orm.b,f0,u_lightDiffuse[i].rgb*k,u_lightSpecular[i].rgb*k);
   }
   if(u_hasEnvironment) {

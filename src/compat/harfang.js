@@ -1,5 +1,6 @@
 // Native-shaped API slice, implemented by shared JS scene/math and WebGL services.
-// Unsupported overloads fail; the native HG JS API remains the reference.
+// Unsupported overloads fail, except the explicitly warned AAA/animation stubs.
+// The native HG JS API remains the reference.
 export * from '../index.js';
 import {Scene as BaseScene, NodeList, attachInstanceView, setTransformMatrix, setObjectModelReference, LT_Spot, LT_Linear, LT_Point} from '../scene/scene.js';
 export {NodeList};
@@ -16,6 +17,11 @@ export {VertexLayoutPosFloatColorFloat,LoadProgramFromAssets,DestroyProgram,SetV
   FC_Disabled,FC_Clockwise,FC_CounterClockwise,CF_Color,CF_Depth,CF_Stencil} from './lines.js';
 import {getHost,optionalHost} from './context.js';
 import {profile} from './profile.js';
+import {animationMethods,validateAAAArguments,warnStub} from './stubs.js';
+export {ForwardPipelineAAAConfig,ForwardPipelineAAA,CreateForwardPipelineAAAFromAssets,DestroyForwardPipelineAAA,IsValid,
+  BR_Equal,BR_Half,BR_Quarter,BR_Eighth,BR_Sixteenth,BR_Double,FPAAADB_None,FPAAADB_SSGI,FPAAADB_SSR,
+  SceneAnimRef,ScenePlayAnimRef,InvalidSceneAnimRef,SceneAnimRefList,ScenePlayAnimRefList,StringList,
+  ALM_Once,ALM_Infinite,ALM_Loop,E_Linear,UnspecifiedAnimTime} from './stubs.js';
 export {profile};
 
 export const LST_None=0, LST_Map=1;
@@ -36,6 +42,7 @@ export class Scene extends BaseScene {
     const object=super.CreateObject(model.value,copies); setObjectModelReference(object,model); return object;
   }
 }
+Object.assign(Scene.prototype,animationMethods);
 export class IntRect {
   constructor(sx=0,sy=0,ex=0,ey=0) {
     for(const value of [sx,sy,ex,ey]) integer(value,-2147483648,2147483647,'rectangle coordinate');
@@ -105,7 +112,7 @@ export function CreateMaterial(program,...values) {
     requireCondition(typeof values[i]==='string' && values[i+1] instanceof Vec4,'INVALID_ARGUMENT','Expected uniform name and Vec4');
     records.push({name:values[i],type:'vec4',value:[...values[i+1].data]});
   }
-  const material=new Material({program:program.name,values:records}); materialPrograms.set(material,program); return material;
+  const material=new Material({program:program.name,values:records},new Map(),{nativeUniforms:true}); materialPrograms.set(material,program); return material;
 }
 function nodeWithMatrix(scene,matrix) {
   const node=scene.CreateNode(), transform=scene.CreateTransform();
@@ -136,7 +143,8 @@ export function GetSceneForwardPipelinePassViewId(views,pass) {
   requireCondition(views instanceof SceneForwardPipelinePassViewId,'INVALID_ARGUMENT','Expected SceneForwardPipelinePassViewId');
   return passViews.get(views)[integer(pass,0,7,'forward pass')];
 }
-export function SubmitSceneToPipeline(viewId,scene,rect,horizontal,pipeline,resources) {
+export function SubmitSceneToPipeline(viewId,scene,rect,horizontal,pipeline,resources,...extra) {
+  if(extra.length)validateAAAArguments(extra);
   const host=getHost();
   integer(viewId,0,65532,'view ID');
   requireCondition(rect instanceof IntRect && horizontal===true && pipeline?.alive && pipeline.host===host && resources.host===host,
@@ -181,21 +189,23 @@ function modelResource(name,resources) {
   requireCondition(recipe,'ASSET_NOT_PRELOADED',`Geometry is not preloaded: ${name}`);
   return resources.AddModel(name,new Model(new Float32Array(recipe.vertices),new Uint32Array(recipe.indices),recipe.submeshes,recipe.bounds,recipe.stride));
 }
-function appendScene(name,scene,resources,pipelineInfo,flags) {
+function appendScene(name,scene,resources,pipelineInfo,flags,stack=[],transaction={nodes:[],components:[]}) {
   requireCondition(scene instanceof Scene&&resources instanceof PipelineResources&&resources.host===getHost()&&pipelineInfo===info,
     'INVALID_ARGUMENT','Expected Scene, PipelineResources and forward pipeline info');
   requireCondition([LSSF_All,0,1,2,3,4,5,6,7].includes(flags),'UNSUPPORTED_OVERLOAD','Unsupported scene load flags');
   const body=resources.host.assets.scenes.get(name);if(!body)return undefined;
+  requireCondition(!stack.includes(name)&&stack.length<32,'INVALID_SCENE','Cyclic or excessively nested scene instance');
+  stack=[...stack,name];
   requireCondition(scene.GetAllNodeCount()+BigInt(flags&LSSF_Nodes?body.nodes.length:0)<=BigInt(profile.limits.maxNodes),'RESOURCE_BUDGET','Scene node budget exceeded');
-  const created=[],components=[],nodes=new Map();
-  const allocate=(kind,value)=>{components.push([kind,value]);return value;};
+  const created=[],nodes=new Map();
+  const allocate=(kind,value)=>{transaction.components.push([kind,value]);return value;};
   try {
     if(flags&LSSF_Nodes) {
       const objects=(body.objects??[]).map(object=>{
         const materials=object.materials.map(source=>{
           const program=LoadPipelineProgramRefFromAssets(source.program,resources,pipelineInfo),textures=new Map();
           for(const t of source.textures??[])if(t.path)textures.set(t.name,textureResource(t.path,resources));
-          const material=new Material(source,textures);materialPrograms.set(material,program);return material;
+          const material=new Material(source,textures,{nativeUniforms:true});materialPrograms.set(material,program);return material;
         });
         const component=allocate('Object',scene.CreateObject(modelResource(object.name,resources),materials));
         (object.material_infos??[]).forEach((v,i)=>{if(i<materials.length)component.SetMaterialName(i,v.name??'');});return component;
@@ -209,19 +219,32 @@ function appendScene(name,scene,resources,pipelineInfo,flags) {
         light.SetDiffuseIntensity(l.diffuse_intensity??1);light.SetSpecularIntensity(l.specular_intensity??1);
         light.SetRadius(l.radius??0);light.SetInnerAngle(l.inner_angle??Deg(30));light.SetOuterAngle(l.outer_angle??Deg(45));light.SetPriority(l.priority??0);
         light.SetShadowType(l.shadow_type==='map'?LST_Map:LST_None);light.SetShadowBias(l.shadow_bias??.0001);
+        if(l.shadow_near!==undefined)light.SetShadowNear(l.shadow_near);if(l.shadow_far!==undefined)light.SetShadowFar(l.shadow_far);
         if(l.pssm_split)light.SetPSSMSplit(new Vec4(...l.pssm_split));return light;
       });
       for(const n of body.nodes) {
-        const node=scene.CreateNode(n.name);nodes.set(n.idx,node);created.push(node);
+        const node=scene.CreateNode(n.name);nodes.set(n.idx,node);created.push(node);transaction.nodes.push(node);
         const [t,c,o,l]=n.components;
         if(!nullReference(t))node.SetTransform(transforms[t]);if(!nullReference(c))node.SetCamera(cameras[c]);
         if(!nullReference(o))node.SetObject(objects[o]);if(!nullReference(l))node.SetLight(lights[l]);if(n.disabled)node.Disable();
       }
       (body.transforms??[]).forEach((t,i)=>{if(!nullReference(t.parent))transforms[i].SetParent(nodes.get(t.parent));});
+      for(const n of body.nodes)if(!nullReference(n.instance)) {
+        const root=nodes.get(n.idx),instance=body.instances[n.instance];
+        root.SetInstance(allocate('Instance',scene.CreateInstance(instance.name)));
+        const children=appendScene(instance.name,scene,resources,pipelineInfo,flags&(LSSF_Nodes|LSSF_Anims),stack,transaction);
+        requireCondition(children,'ASSET_NOT_PRELOADED',`Missing instance scene: ${instance.name}`);
+        for(const child of children)if(child.GetTransform().IsValid()&&!child.GetTransform().GetParent().IsValid())child.GetTransform().SetParent(root);
+        attachInstanceView(root,children);if(n.disabled)root.Disable();
+        if(instance.anim)warnStub('animation');
+      }
     }
+    if((flags&LSSF_Anims)&&(body.anims?.length||body.scene_anims?.length))warnStub('animation');
     if(flags&LSSF_Scene) {
       const env=body.environment??{},maps={};
-      for(const key of ['brdf_map','irradiance_map','radiance_map'])if(env[key])maps[key]=textureResource(env[key],resources);
+      for(const key of ['brdf_map','irradiance_map','radiance_map']) {
+        const path=key==='brdf_map'?env[key]:(env.probe?.[key]??env[key]);if(path)maps[key]=textureResource(path,resources);
+      }
       maps.brdf_map=maps.brdf_map?.ref??InvalidTextureRef;
       scene.environment={ambient:new Color(...(env.ambient??[0,0,0,255]).map(v=>v/255)),fog_color:new Color(...(env.fog_color??[0,0,0,255]).map(v=>v/255)),
         fog_near:env.fog_near??0,fog_far:env.fog_far??0,...maps};
@@ -231,8 +254,8 @@ function appendScene(name,scene,resources,pipelineInfo,flags) {
     }
     return created;
   } catch(error) {
-    for(const node of created.reverse())if(node.IsValid())scene.DestroyNode(node);
-    for(const [kind,component] of components.reverse())if(component.IsValid())scene[`Destroy${kind}`](component);
+    for(const node of transaction.nodes.slice().reverse())if(node.IsValid())scene.DestroyNode(node);
+    for(const [kind,component] of transaction.components.slice().reverse())if(component.IsValid())scene[`Destroy${kind}`](component);
     throw error;
   }
 }

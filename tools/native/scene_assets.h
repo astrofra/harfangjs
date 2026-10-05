@@ -35,7 +35,8 @@ static json convert_geometry(const std::string &bytes) {
   for(size_t i=0;i<polygons;++i) {const auto n=uint8_t(bytes[r.offset++]),m=uint8_t(bytes[r.offset++]);check(n>=3,"Invalid polygon");parts.emplace_back(n,m);corners+=n;}
   check(r.u32()==corners&&corners<=4000000,"Invalid geometry bindings");std::vector<uint32_t> bindings(corners);
   for(auto &v:bindings){v=r.u32();check(v<positions.size()/3,"Invalid vertex binding");}
-  const auto normals=r.floats(3);check(normals.size()==corners*3,"Source normals required");r.skip(16);r.skip(24);
+  const auto normals=r.floats(3);check(normals.size()==corners*3,"Source normals required");r.skip(16);
+  const auto tangents=r.floats(6);check(tangents.empty()||tangents.size()==corners*6,"Invalid tangent frames");
   const auto uv=r.floats(2);check(uv.empty()||uv.size()==corners*2,"Invalid UV0");for(int i=1;i<8;++i)r.skip(8);
   if(version>0) {check(r.u32()==0&&r.u32()==0,"Skinned geometry unsupported");}
   check(r.offset==bytes.size(),"Unexpected geometry trailing data");
@@ -47,12 +48,13 @@ static json convert_geometry(const std::string &bytes) {
       for(int k=0;k<3;++k){const auto p=positions[bindings[corner]*3+k];vertices.push_back(p);lo[k]=std::min(lo[k],p);hi[k]=std::max(hi[k],p);}
       for(int k=0;k<3;++k)vertices.push_back(normals[corner*3+k]);
       vertices.push_back(uv.empty()?0.f:uv[corner*2]);vertices.push_back(uv.empty()?0.f:uv[corner*2+1]);
+      if(!tangents.empty())for(int k=0;k<6;++k)vertices.push_back(tangents[corner*6+k]);
     }
     for(unsigned i=1;i+1<part.first;++i){auto &g=groups[part.second];g.push_back(uint32_t(base));g.push_back(uint32_t(base+i+1));g.push_back(uint32_t(base+i));}
     base+=part.first;
   }
   for(const auto &g:groups){submeshes.push_back({{"material",g.first},{"firstIndex",indices.size()},{"indexCount",g.second.size()}});for(auto i:g.second)indices.push_back(i);}
-  return {{"schema","harfang-web-geometry/1"},{"stride",8},{"vertices",vertices},{"indices",indices},{"submeshes",submeshes},{"bounds",{{"min",lo},{"max",hi}}}};
+  return {{"schema","harfang-web-geometry/1"},{"stride",tangents.empty()?8:14},{"vertices",vertices},{"indices",indices},{"submeshes",submeshes},{"bounds",{{"min",lo},{"max",hi}}}};
 }
 struct CompilerImage : cmft::Image {
   CompilerImage()=default;CompilerImage(const CompilerImage &)=delete;
@@ -77,7 +79,7 @@ static json image_meta(const fs::path &source,const std::string &name) {
   const auto meta=json::parse(read(path));check(meta.contains("profiles")&&meta["profiles"].contains("default"),"Invalid image metadata");
   return meta["profiles"]["default"];
 }
-static void compile_image(AssetOutputs &out,const fs::path &source,const std::string &name,const std::string &bytes) {
+static void compile_image(AssetOutputs &out,const fs::path &source,const std::string &name,const std::string &bytes,unsigned max_texture_size) {
   CompilerImage image;check(bytes.size()<=67108864,"Image input limit");
   const auto extension=fs::u8path(name).extension().string();
   if(extension==".dds") {
@@ -115,16 +117,34 @@ static void compile_image(AssetOutputs &out,const fs::path &source,const std::st
       meta.value("radiance-edge-fixup",false)?cmft::EdgeFixup::Warp:cmft::EdgeFixup::None,threads,nullptr),"Radiance generation failed");
     add_image(out,name+".irradiance",irradiance,true);add_image(out,name+".radiance",radiance,true);
   } else {
-    for(const auto &field:meta.items())check((field.key()=="min-filter"||field.key()=="mag-filter")&&(field.value()=="Linear"||field.value()=="Anisotropic"),"Unsupported texture metadata: "+field.key());
-    if(extension==".png")cmft::imageGenerateMipMapChain(image);
+    for(const auto &field:meta.items())check(((field.key()=="min-filter"||field.key()=="mag-filter")&&(field.value()=="Linear"||field.value()=="Anisotropic"))||
+      (field.key()=="compression"&&field.value()=="BC3"),"Unsupported texture metadata: "+field.key());
+    if(extension==".png") {
+      if(max_texture_size&&std::max(image.m_width,image.m_height)>max_texture_size) {
+        const float scale=float(max_texture_size)/std::max(image.m_width,image.m_height);
+        cmft::imageResize(image,std::max(1u,unsigned(image.m_width*scale)),std::max(1u,unsigned(image.m_height*scale)));
+      }
+      cmft::imageGenerateMipMapChain(image);
+    }
     const bool anisotropic=meta.value("min-filter",std::string())=="Anisotropic"||meta.value("mag-filter",std::string())=="Anisotropic";
     add_image(out,name,image,extension==".dds",anisotropic);
+    if(meta.contains("compression")) {
+      out.assets[name]["sourceCompression"]=meta["compression"];
+      std::cerr<<"assetc-web: warning: "<<name<<": native BC3 target replaced by portable RGBA8.\n";
+    }
   }
 }
-static std::set<std::string> scene_dependencies(const json &scene) {
+static std::set<std::string> scene_dependencies(const json &scene,bool animation_stubs) {
   std::set<std::string> deps;
-  for(const auto &field:{"instances","anims","scene_anims","scripts","scene_scripts","rigid_bodies","collisions"})
+  for(const auto &field:{"scripts","scene_scripts","rigid_bodies","collisions"})
     check(!scene.contains(field)||scene[field].empty(),std::string("Unsupported scene content: ")+field);
+  for(const auto &field:{"anims","scene_anims"})if(scene.contains(field)&&!scene[field].empty())
+    check(animation_stubs,"Animation playback unsupported; opt in with --animation-stubs to retain tracks without playback");
+  if(scene.contains("instances"))for(const auto &instance:scene["instances"]) {
+    for(const auto &field:instance.items())check(field.key()=="name"||field.key()=="anim"||field.key()=="loop_mode","Unsupported instance field: "+field.key());
+    deps.insert(instance.at("name").get<std::string>());
+    if(instance.contains("anim")&&!instance["anim"].get<std::string>().empty())check(animation_stubs,"Instance animation requires --animation-stubs");
+  }
   check(scene.contains("nodes")&&scene["nodes"].is_array()&&scene["nodes"].size()<=16384,"Invalid scene nodes");
   if(scene.contains("objects"))for(const auto &object:scene["objects"]) {
     check(!object.contains("bones")||object["bones"].empty(),"Skinned object unsupported");deps.insert(object.at("name").get<std::string>());
@@ -134,12 +154,18 @@ static std::set<std::string> scene_dependencies(const json &scene) {
       check(material.value("blend_mode",std::string("opaque"))=="opaque","Transparent materials not supported in native scene profile");
       check(!material.contains("flags")||material["flags"].empty(),"Unsupported material variant flags");
       if(material.contains("textures"))for(const auto &texture:material["textures"]) {
-        check(texture.at("name")=="uBaseOpacityMap","Only base color material maps supported in scene profile");deps.insert(texture.at("path").get<std::string>());
+        const auto sampler=texture.at("name").get<std::string>();
+        check(sampler=="uBaseOpacityMap"||sampler=="uNormalMap"||sampler=="uOcclusionRoughnessMetalnessMap","Unsupported PBR material map: "+sampler);
+        if(texture.contains("path")&&!texture["path"].get<std::string>().empty())deps.insert(texture["path"].get<std::string>());
       }
     }
   }
   if(scene.contains("environment")){
-    const auto &env=scene["environment"];check(!env.contains("probe"),"Volume probes require another profile");
+    const auto &env=scene["environment"];
+    if(env.contains("probe")) {
+      const auto &probe=env["probe"];check(probe.value("parallax",0.f)==0.f,"Parallax-corrected probes unsupported");
+      for(const auto &name:{"irradiance_map","radiance_map"})if(probe.contains(name)&&!probe[name].get<std::string>().empty())deps.insert(probe[name].get<std::string>());
+    }
     for(const auto &name:{"brdf_map","irradiance_map","radiance_map"})if(env.contains(name)&&!env[name].get<std::string>().empty())deps.insert(env[name].get<std::string>());
   }
   return deps;

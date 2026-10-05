@@ -65,7 +65,8 @@ static void publish(const fs::path &output,const AssetOutputs &compiled,const js
   if(saved){owned(backup);fs::remove_all(backup);}
 }
 static int run(const std::vector<std::string> &args) {
-  bool quiet=false,verbose=false,progress=false;
+  bool quiet=false,verbose=false,progress=false,animation_stubs=false;
+  unsigned max_texture_size=0;
   std::vector<fs::path> paths;
   for(size_t i=0;i<args.size();++i) {
     const auto &arg=args[i];
@@ -73,11 +74,19 @@ static int run(const std::vector<std::string> &args) {
       std::cout<<"assetc-web [options] <input-directory> [output-directory]\n"
         "Reviewed default/PBR/line programs, static scenes/geometry, PNG/DDS and HDR probes.\n"
         "-q/-quiet -v/-verbose -progress -j/-job N -l/-log_errors_to_stderr\n"
+        "--animation-stubs: preserve animation data without Web playback\n"
+        "--max-texture-size N: resize PNGs before mip generation (default: original size)\n"
         "Fixed WebGL 2 target; unsupported options/content fail.\n"; return 0;
     } else if(arg=="-q" || arg=="-quiet") quiet=true;
     else if(arg=="-v" || arg=="-verbose") verbose=true;
     else if(arg=="-progress") progress=true;
     else if(arg=="-l" || arg=="-log_errors_to_stderr") {}
+    else if(arg=="--animation-stubs")animation_stubs=true;
+    else if(arg=="--max-texture-size") {
+      check(++i<args.size()&&!args[i].empty()&&args[i].find_first_not_of("0123456789")==std::string::npos,"Expected texture size");
+      max_texture_size=unsigned(std::stoul(args[i]));
+      check(max_texture_size>=16&&max_texture_size<=4096&&(max_texture_size&(max_texture_size-1))==0,"Texture size must be a power of two from 16 to 4096");
+    }
     else if(arg=="-j" || arg=="-job") {
       check(++i<args.size(),"Missing job count");
       check(!args[i].empty() && args[i].find_first_not_of("0123456789")==std::string::npos,"Invalid job count");
@@ -125,8 +134,8 @@ static int run(const std::vector<std::string> &args) {
   auto bytes=program.dump(2)+"\n", digest=sha256(bytes);
   compiled.add("core/shader/default.hps","program",bytes);
   if(scene_profile) {
-    json pbr={{"schema","harfang-web-program/1"},{"adapter","pbr-scene-instanced/1"},{"logicalId","core/shader/pbr.hps"},{"sourceHashes",source_hashes},
-      {"variants",{"base-color-unskinned"}},{"requires",{"render.forward","render.directional-shadow","render.environment","render.textures"}},
+    json pbr={{"schema","harfang-web-program/1"},{"adapter","pbr-scene-instanced/2"},{"logicalId","core/shader/pbr.hps"},{"sourceHashes",source_hashes},
+      {"variants",{"pbr-maps-unskinned"}},{"requires",{"render.forward","render.directional-shadow","render.spot-shadow","render.environment","render.textures"}},
       {"forward",{{"vertex",pbr_vertex},{"fragment",pbr_fragment}}},{"depth",{{"vertex",depth_vertex},{"fragment",depth_fragment}}}};
     compiled.add("core/shader/pbr.hps","program",pbr.dump(2)+"\n");
     json line={{"schema","harfang-web-program/1"},{"adapter","pos-rgb/1"},{"logicalId","shaders/pos_rgb"},{"sourceHashes",source_hashes},
@@ -136,9 +145,9 @@ static int run(const std::vector<std::string> &args) {
       const auto extension=fs::u8path(input.first).extension().string();
       if(extension==".geo")compiled.add(input.first,"geometry",convert_geometry(input.second).dump()+"\n");
       else if(extension==".scn") {
-        const auto scene=json::parse(input.second);const auto deps=scene_dependencies(scene);
+        const auto scene=json::parse(input.second);const auto deps=scene_dependencies(scene,animation_stubs);
         compiled.add(input.first,"scene",scene.dump()+"\n",{{"dependencies",deps}});
-      } else if(extension!=".meta")compile_image(compiled,source,input.first,input.second);
+      } else if(extension!=".meta")compile_image(compiled,source,input.first,input.second,max_texture_size);
     }
     for(const auto &entry:compiled.assets.items())for(const auto &dep:entry.value()["dependencies"])
       check(compiled.assets.contains(dep.get<std::string>()),"Missing compiled dependency: "+dep.get<std::string>());
@@ -147,6 +156,8 @@ static int run(const std::vector<std::string> &args) {
     {"profile","web-native-forward/1"},{"compiler","assetc-web/program-1"},
     {"buildId",digest},{"maxNodes",16384}};
   manifest["assets"]=compiled.assets;manifest["sourceHashes"]=source_hashes;
+  if(animation_stubs){manifest["animationPlayback"]="stub";std::cerr<<"assetc-web: warning: animation playback is stubbed; tracks are preserved but will not play.\n";}
+  manifest["maxTextureSize"]=max_texture_size;
   if(scene_profile){manifest["profile"]="web-native-scene/1";manifest["compiler"]="assetc-web/scene-1";manifest["buildId"]=sha256(compiled.assets.dump());}
   // Validate/compile everything first, then replace the complete owned output.
   // Stable filenames can change bytes, and obsolete hashed files disappear.
