@@ -1,0 +1,10 @@
+{
+  "core/shader/pbr.hps": "e4f2833fe808aa744f3f266bfca5d7ae9a00a91faceed26e03cdbee361e71cbe",
+  "core/shader/pbr_vs.sc": "f3629aadfe6fe0aa80ee46d8bd17527b7da43d26130a57caad1a1512b2606c1d",
+  "core/shader/pbr_fs.sc": "0f2b88cef308856c1dd47ba5cc3fc115084402bde5c2ee4734b63b809b4d7588",
+  "core/shader/pbr_varying.def": "adf22b63b2e05fc05c810d5e21a028ad0cb5d6d6dbcf908af9bf188eef9e7f7b",
+  "shaders/pos_rgb_vs.sc": "26ad4c9b1ef632593baee1c14ec12da30f5743d669988662867a9164c5cf0065",
+  "shaders/pos_rgb_fs.sc": "c894f681c26d3fd5729b8fbe7e5b8705475a4dde92843b787f345f9d3f39252b",
+  "shaders/pos_rgb_varying.def": "45a2d6008203c031d510c52d27382fd16c9ca99ded42f738d575a124705443a2",
+  "shaders/bgfx_shader.sh": "25dc4645b1568cde1693183d288181c9a878d69248f673f85d5a51c8ea5988a6"
+}

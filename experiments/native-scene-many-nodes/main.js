@@ -22,7 +22,7 @@ async function start() {
           window.manyNodes.history.push(s);
           const nodes=host.currentScene.GetNodes();
           window.manyNodes.samples=[3,3+50*101+50,10203].map(i=>{
-            const p=nodes[i].GetTransform().GetPos();return [p.x,p.y,p.z];
+            const p=nodes.get(i).GetTransform().GetPos();return [p.x,p.y,p.z];
           });
           if(host.frames===4 || host.frames===frameLimit) window.manyNodes.captures[host.frames]=canvas.toDataURL('image/png');
         }

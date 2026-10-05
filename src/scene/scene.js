@@ -1,6 +1,6 @@
 import {HandlePool} from '../core/handles.js';
 import {requireCondition, finite, integer} from '../core/errors.js';
-import {Vec3, Color, Deg, Mat4, Mat44, Inverse, TransformationMat4, FovToZoomFactor, ComputePerspectiveProjectionMatrix, ComputeOrthographicProjectionMatrix} from '../core/math.js';
+import {Vec3, Vec4, Color, Deg, Mat4, Mat44, Inverse, TransformationMat4, FovToZoomFactor, ComputePerspectiveProjectionMatrix, ComputeOrthographicProjectionMatrix} from '../core/math.js';
 import {profile} from '../profile.js';
 import {Material} from '../render/materials.js';
 import {time_from_ns} from '../core/time.js';
@@ -65,6 +65,7 @@ export class Transform extends Handle {
   ClearParent() { value(this).parent = undefined; }
   GetWorld() {
     const first = value(this);
+    if(first.nativeWorldCache)return new Mat4(first.world??Mat4.Identity);
     if (!first.nodes.valid(first.parent)) return new Mat4(localMatrix(first));
     const chain = [], seen = new Set(); let transform = this;
     while (transform.IsValid()) {
@@ -104,9 +105,12 @@ export function setTransformMatrix(transform, matrix) {
 // Renderer-only borrowed storage; public GetWorld() continues to return a copy.
 export function transformWorldData(transform) {
   const state=value(transform);
+  if(state.nativeWorldCache)return (state.world??Mat4.Identity).data;
   return state.nodes.valid(state.parent)?transform.GetWorld().data:localMatrix(state).data;
 }
 function requireVec3(v) { requireCondition(v instanceof Vec3, 'INVALID_ARGUMENT', 'Expected Vec3'); }
+// Internal renderer iteration bypasses public native NodeList value copies.
+export function allSceneNodes(scene) {return Scene.prototype.GetAllNodes.call(scene);}
 export class Node extends Handle {
   GetName() { return value(this).name; }
   SetName(name) { requireCondition(typeof name === 'string', 'INVALID_ARGUMENT', 'Expected node name'); value(this).name = name; }
@@ -122,10 +126,51 @@ export class Node extends Handle {
   SetObject(object) { const v = value(this); v.object = token(object, v.objects); }
   GetLight() { const v = value(this); return new Light(v.lights, v.light); }
   SetLight(light) { const v = value(this); v.light = token(light,v.lights); }
-  IsEnabled() { return value(this).enabled; }
-  IsItselfEnabled() { return this.IsEnabled(); }
-  Enable() { value(this).enabled = true; }
-  Disable() { value(this).enabled = false; }
+  GetInstance() { const v=value(this);return new Instance(v.instances,v.instance); }
+  SetInstance(instance) { const v=value(this);v.instance=token(instance,v.instances); }
+  IsInstantiatedBy() { const v=value(this);return new Node(v.nodes,v.instanceOwner); }
+  GetInstanceSceneView() { return value(this).instanceView??new SceneView([]); }
+  IsEnabled() { const v=value(this);return v.enabled&&!v.instanceDisabled; }
+  IsItselfEnabled() { return value(this).enabled; }
+  Enable() { value(this).enabled = true;if(this.IsEnabled())setInstanceEnabled(this,true); }
+  Disable() { value(this).enabled = false;setInstanceEnabled(this,false); }
+}
+function setInstanceEnabled(root,enabled) {
+  const children=value(root).instanceView?.GetNodes();
+  for(let i=0;i<(children?.length??0);++i) {const child=children.get(i);if(!child.IsValid())continue;
+    value(child).instanceDisabled=!enabled;
+    if(!enabled||child.IsEnabled())setInstanceEnabled(child,enabled);
+  }
+}
+export class NodeList {
+  #nodes;
+  constructor(sequence=[]) {
+    requireCondition(Array.isArray(sequence)&&sequence.every(node=>node instanceof Node),'INVALID_ARGUMENT','NodeList expects an array of Node values');
+    this.#nodes=sequence.slice();
+  }
+  get length(){return this.#nodes.length;}
+  size(){return BigInt(this.length);}
+  clear(){this.#nodes.length=0;}
+  reserve(count){integer(Number(count),0,4294967295,'capacity');}
+  push_back(node){requireCondition(node instanceof Node,'INVALID_ARGUMENT','Expected Node');this.#nodes.push(node);}
+  at(index){return this.get(index);}
+  get(index){const node=this.#nodes[integer(Number(index),0,this.length-1,'node index')],ref=handles.get(node);return new Node(ref?.pool,ref);}
+  set(index,node){requireCondition(node instanceof Node,'INVALID_ARGUMENT','Expected Node');this.#nodes[integer(Number(index),0,this.length-1,'node index')]=node;}
+  equals(other){return other instanceof NodeList&&this.length===other.length&&this.#nodes.every((node,i)=>node.equals(other.#nodes[i]));}
+}
+export class Instance extends Handle {
+  GetPath() { return value(this).path; }
+  SetPath(path) { requireCondition(typeof path==='string','INVALID_ARGUMENT','Expected instance path');value(this).path=path; }
+}
+export class SceneView {
+  #nodes;
+  constructor(nodes) { this.#nodes=nodes.slice(); }
+  GetNodes() { return new NodeList(this.#nodes); }
+  GetNode(scene,name) { return this.#nodes.find(node=>node.IsValid()&&node.GetName()===name)??new Node(); }
+}
+export function attachInstanceView(root,children) {
+  const owner=handles.get(root);value(root).instanceView=new SceneView(children);
+  for(const child of children){value(child).instanceOwner=owner;value(child).instantiated=true;}
 }
 export class Camera extends Handle {
   GetZNear() { return value(this).near; }
@@ -153,6 +198,8 @@ export const LT_Point = 0, LT_Spot = 1, LT_Linear = 2;
 export function setObjectModelReference(object, ref) { value(object).modelRef=ref; }
 export function objectModel(object) { return value(object).model; }
 export class Light extends Handle {
+  GetPSSMSplit() { return new Vec4(...(value(this).pssmSplit??[10,50,100,500])); }
+  SetPSSMSplit(v) { requireCondition(v instanceof Vec4&&v.data.every((n,i)=>n>0&&(i===0||n>v.data[i-1])),'INVALID_LIGHT','Expected increasing shadow splits');value(this).pssmSplit=[...v.data]; }
   GetShadowType() { return value(this).shadowType ?? 0; }
   SetShadowType(type) { requireCondition(type === 0 || type === 1, 'INVALID_LIGHT', 'Unknown shadow type'); value(this).shadowType = type; }
   GetShadowBias() { return value(this).shadowBias ?? 0.0001; }
@@ -188,13 +235,16 @@ export class Scene {
   #transforms = new HandlePool();
   #cameras = new HandlePool(); #objects = new HandlePool(); #currentCamera;
   #lights = new HandlePool();
+  #instances = new HandlePool();
   #owned = [];
   #order = [];
   #nodeWrappers;
   #disposed = false;
   #maxNodes;
-  constructor({maxNodes = profile.limits.maxNodes} = {}) {
+  #nativeWorldCache;
+  constructor({maxNodes = profile.limits.maxNodes,nativeWorldCache=false} = {}) {
     this.#maxNodes = integer(maxNodes, 1, 16384, 'scene node limit');
+    this.#nativeWorldCache=nativeWorldCache;
   }
   canvas = {clear_color: true, clear_z: true, color: new Color(0.05, 0.06, 0.08)};
   metadata = {};
@@ -204,7 +254,7 @@ export class Scene {
     this.#assertAlive();
     requireCondition(typeof name === 'string', 'INVALID_ARGUMENT', 'Expected node name');
     requireCondition(this.#nodes.size < this.#maxNodes, 'RESOURCE_BUDGET', 'Scene node budget exceeded');
-    const ref = this.#nodes.allocate({name, transforms: this.#transforms, cameras: this.#cameras, objects: this.#objects, lights:this.#lights, transform: undefined, enabled: true});
+    const ref = this.#nodes.allocate({name, nodes:this.#nodes, transforms: this.#transforms, cameras: this.#cameras, objects: this.#objects, lights:this.#lights, instances:this.#instances, transform: undefined, enabled: true});
     this.#order.push(ref);
     this.#nodeWrappers=undefined;
     return new Node(this.#nodes, ref);
@@ -213,8 +263,10 @@ export class Scene {
     this.#assertAlive();
     return new Node(this.#nodes, this.#order.find(t => this.#nodes.valid(t) && this.#nodes.get(t).name === name));
   }
-  GetNodes() { this.#assertAlive(); this.#nodeWrappers??=this.#order.filter(t=>this.#nodes.valid(t)).map(t=>new Node(this.#nodes,t)); return this.#nodeWrappers.slice(); }
-  GetNodeCount() { this.#assertAlive(); return BigInt(this.#nodes.size); }
+  GetAllNodes() { this.#assertAlive(); this.#nodeWrappers??=this.#order.filter(t=>this.#nodes.valid(t)).map(t=>new Node(this.#nodes,t)); return this.#nodeWrappers.slice(); }
+  GetNodes() { const all=Scene.prototype.GetAllNodes.call(this);return all.filter(n=>!value(n).instantiated); }
+  GetNodeCount() { this.#assertAlive(); return BigInt(Scene.prototype.GetNodes.call(this).length); }
+  GetAllNodeCount() { this.#assertAlive(); return BigInt(this.#nodes.size); }
   DestroyNode(node) {
     const ref = token(node, this.#nodes);
     try { notifyDestruction(ref); }
@@ -227,7 +279,7 @@ export class Scene {
   CreateTransform(pos = Vec3.Zero, rot = Vec3.Zero, scale = Vec3.One) {
     this.#assertAlive();
     [pos, rot, scale].forEach(requireVec3);
-    return new Transform(this.#transforms, this.#transforms.allocate({pos: new Vec3(pos), rot: new Vec3(rot), scale: new Vec3(scale), nodes: this.#nodes}));
+    return new Transform(this.#transforms, this.#transforms.allocate({pos: new Vec3(pos), rot: new Vec3(rot), scale: new Vec3(scale), nodes: this.#nodes,nativeWorldCache:this.#nativeWorldCache}));
   }
   DestroyTransform(transform) { this.#transforms.release(token(transform, this.#transforms)); }
   CreateCamera(near = 0.01, far = 1000, fov) {
@@ -265,6 +317,8 @@ export class Scene {
       diffuseIntensity:1,specularIntensity:1,radius:0,inner:Deg(30),outer:Deg(45),priority:0}));
   }
   DestroyLight(light) { this.#lights.release(token(light,this.#lights)); }
+  CreateInstance(path='') { this.#assertAlive();return new Instance(this.#instances,this.#instances.allocate({path})); }
+  DestroyInstance(instance) { this.#instances.release(token(instance,this.#instances)); }
   GetLights() {
     this.#assertAlive(); const result=[];
     for(const ref of this.#order) if(this.#nodes.valid(ref) && this.#lights.valid(this.#nodes.get(ref).light)) result.push(new Node(this.#nodes,ref));
@@ -273,6 +327,7 @@ export class Scene {
   own(resource) { this.#assertAlive(); this.#owned.push(resource); return resource; }
   Update(dt) {
     this.#assertAlive(); time_from_ns(dt);
+    if(this.#nativeWorldCache) {this.ReadyWorldMatrices();this.ComputeWorldMatrices();return;}
     // Populate local caches. World queries compose the current parent chain;
     // authored animations are not part of this scene implementation.
     for (const ref of this.#order) {
@@ -281,13 +336,31 @@ export class Scene {
       if(this.#transforms.valid(transform)) localMatrix(this.#transforms.get(transform));
     }
   }
+  ReadyWorldMatrices() {
+    this.#assertAlive();
+    this.#transforms.forEach(state=>{state.worldReady=false;});
+  }
+  ComputeWorldMatrices() {
+    this.#assertAlive();
+    const compute=(state,depth=0)=>{
+      requireCondition(depth<profile.limits.maxHierarchyDepth,'HIERARCHY_CYCLE','Invalid transform hierarchy');
+      if(state.worldReady)return state.world;
+      let world=localMatrix(state);
+      if(this.#nodes.valid(state.parent)) {
+        const parent=this.#nodes.get(state.parent).transform;
+        if(this.#transforms.valid(parent))world=compute(this.#transforms.get(parent),depth+1).mul(world);
+      }
+      state.world??=new Mat4();state.world.data.set(world.data);state.worldReady=true;return state.world;
+    };
+    this.#transforms.forEach(state=>compute(state));
+  }
   Clear() {
     this.#assertAlive();
     const errors = [];
     for (const ref of [...this.#order]) { try { notifyDestruction(ref); } catch (e) { errors.push(e); } }
-    this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#lights.dispose();
+    this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#lights.dispose();this.#instances.dispose();
     this.#nodes = new HandlePool(); this.#transforms = new HandlePool(); this.#cameras = new HandlePool();
-    this.#objects = new HandlePool(); this.#lights = new HandlePool(); this.#order.length = 0; this.#currentCamera = undefined; this.#nodeWrappers=undefined;
+    this.#objects = new HandlePool(); this.#lights = new HandlePool();this.#instances=new HandlePool(); this.#order.length = 0; this.#currentCamera = undefined; this.#nodeWrappers=undefined;
     this.environment = {ambient:Color.Black,fog_near:0,fog_far:0,fog_color:Color.Black}; this.metadata = {};
     for (const resource of this.#owned.splice(0).reverse()) { try { resource.dispose(); } catch (e) { errors.push(e); } }
     if (errors.length) throw new AggregateError(errors, 'Scene clearing failed');
@@ -298,7 +371,7 @@ export class Scene {
     this.#disposed = true;
     const errors = [];
     for (const ref of [...this.#order]) { try { notifyDestruction(ref); } catch (e) { errors.push(e); } }
-    this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#lights.dispose(); this.#order.length = 0; this.#nodeWrappers=undefined;
+    this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#lights.dispose();this.#instances.dispose(); this.#order.length = 0; this.#nodeWrappers=undefined;
     for (const owned of this.#owned.splice(0).reverse()) { try { owned.dispose(); } catch (e) { errors.push(e); } }
     if (errors.length) throw new AggregateError(errors, 'Scene destruction callback failed');
   }

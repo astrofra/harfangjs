@@ -1,13 +1,14 @@
 import {InputManager} from '../core/input.js';
 import {requireCondition} from '../core/errors.js';
 import {InstancedForwardRenderer} from '../render/instanced-forward.js';
+import {NativeSceneRenderer} from '../render/native-scene.js';
 import {loadProgramAssets} from './program-assets.js';
 import {getHost,setHost} from './context.js';
 import {profile} from './profile.js';
 
 // Browser-only lifecycle. A native application's window helper may be replaced
 // by `export {runWindow} from 'harfang/browser'` without altering scene code.
-export async function createNativeBrowserApplication({canvas,manifestURL,onFrame=()=>{},fixedDeltaNs,signal}={}) {
+export async function createNativeBrowserApplication({canvas,manifestURL,onFrame=()=>{},beforeFrame=()=>{},fixedDeltaNs,signal,centerMouse=false}={}) {
   requireCondition(canvas instanceof HTMLCanvasElement,'INVALID_CANVAS','Expected a canvas');
   requireCondition(fixedDeltaNs===undefined || (typeof fixedDeltaNs==='bigint'&&fixedDeltaNs>=0n),'INVALID_ARGUMENT','Expected a nonnegative BigInt test delta');
   const assets=await loadProgramAssets(manifestURL,signal);
@@ -29,7 +30,7 @@ export async function createNativeBrowserApplication({canvas,manifestURL,onFrame
     request=requestAnimationFrame(time=>{
       request=undefined; const pending=waiter; waiter=undefined;
       try {
-        resize(); host.input.snapshot();
+        resize();beforeFrame(host); host.input.snapshot();
         const dt=fixedDeltaNs??BigInt(Math.round(previous===undefined?0:Math.min(profile.limits.maxFrameDeltaMs,Math.max(0,time-previous))*1e6));
         previous=time; pending.resolve({closed:false,dtNs:dt});
       } catch(error) {pending.reject(error);}
@@ -59,10 +60,10 @@ export async function createNativeBrowserApplication({canvas,manifestURL,onFrame
         const errors=[];
         const clean=fn=>{try{fn();}catch(error){errors.push(error);}};
         for(const scene of host.scenes) clean(()=>scene.dispose());
-        for(const resource of host.resources) {clean(()=>resource.DestroyAllModels());clean(()=>resource.DestroyAllPrograms());}
+        for(const resource of host.resources) {clean(()=>resource.DestroyAllTextures());clean(()=>resource.DestroyAllModels());clean(()=>resource.DestroyAllPrograms());}
         for(const pipeline of host.pipelines) pipeline.alive=false;
-        clean(()=>host.renderer?.dispose());clean(()=>host.input?.dispose());
-        host.finalResources=host.renderer?{...host.renderer.stats}:{};
+        clean(()=>host.lines?.dispose());clean(()=>host.renderer?.dispose());clean(()=>host.input?.dispose());
+        host.finalResources=host.renderer?{...host.renderer.stats,...(host.lines?{linePrograms:host.lines.stats.programs,lineBufferBytes:host.lines.stats.gpuBufferBytes}:{})}:{};
         host.scenes.clear();host.resources.clear();host.pipelines.clear();host.currentScene=undefined;
         for(const off of listeners.splice(0)) off();setHost(undefined);
         host.state=host.failure||errors.length?'failed':'stopped';
@@ -74,8 +75,10 @@ export async function createNativeBrowserApplication({canvas,manifestURL,onFrame
   host.open=(title,width,height,resetFlags)=>{
     host.requestedSize=[width,height];
     canvas.setAttribute('aria-label',title);
-    host.renderer=new InstancedForwardRenderer(canvas,{antialias:false});
+    const Renderer=assets.manifest.profile==='web-native-scene/1'?NativeSceneRenderer:InstancedForwardRenderer;
+    host.renderer=new Renderer(canvas,{antialias:false});
     host.input=new InputManager().attach(canvas);canvas.focus();resize();
+    if(centerMouse)host.input.move(canvas.width/2,canvas.height/2);
     host.presentation.requestedResetFlags=resetFlags??0;
     if((resetFlags??0)&0x70) host.warn('[HARFANG Web] Requested MSAA is ignored by this host; antialiasing is disabled.');
     on(document,'visibilitychange',()=>{previous=undefined;if(document.hidden){cancel();host.input.reset();}else schedule();});
@@ -87,7 +90,7 @@ export async function createNativeBrowserApplication({canvas,manifestURL,onFrame
   };
   host.record=(dt,drawMs)=>{
     host.frames++;host.metrics={...host.renderer.stats,frame:host.frames,dtNs:String(dt),drawMs,
-      scene:host.currentScene?.stats,presentation:{...host.presentation},warnings:host.warnings.slice()};
+      scene:host.currentScene?.stats,presentation:{...host.presentation},warnings:host.warnings.slice(),...(host.lines?{lines:{...host.lines.stats}}:{})};
     onFrame(host);
   };
   return host;
@@ -101,7 +104,7 @@ export async function runWindow(title,create,{width=1280,height=720,resetFlags,f
   try {
     host.open(title,width,height,resetFlags); const start=performance.now();app=create();host.initMs=performance.now()-start;
     for(let frame=0;frame<frameLimit;++frame) {
-      const state=await host.nextFrame();if(state.closed||host.input.keyboard.Key('Escape')) break;
+      const state=await host.nextFrame();if(state.closed||host.input.keyboard.Key('Escape')||host.input.keyboard.Pressed('Escape')) break;
       const start=performance.now();app.draw(state.dtNs,host.canvas.width,host.canvas.height);
       host.record(state.dtNs,performance.now()-start);
     }

@@ -119,11 +119,38 @@ function affineFrom44(m) {
   return new Mat4(...Array.from({length: 12}, (_, i) => m[Math.floor(i / 3) * 4 + i % 3]));
 }
 export function GetColumn(m, index) {
-  integer(index, 0, 3, 'column');
-  return m instanceof Mat4 ? new Vec3(...m.data.slice(index * 3, index * 3 + 3)) : new Vec4(...m.data.slice(index * 4, index * 4 + 4));
+  integer(index, 0, m instanceof Mat3?2:3, 'column');
+  return m instanceof Mat4 || m instanceof Mat3 ? new Vec3(...m.data.slice(index * 3, index * 3 + 3)) : new Vec4(...m.data.slice(index * 4, index * 4 + 4));
 }
+export const GetX = m => m instanceof Mat3 ? new Vec3(...m.data.slice(0,3)) : GetColumn(m,0);
+export const GetY = m => m instanceof Mat3 ? new Vec3(...m.data.slice(3,6)) : GetColumn(m,1);
+export const GetZ = m => m instanceof Mat3 ? new Vec3(...m.data.slice(6,9)) : GetColumn(m,2);
 export const GetT = m => GetColumn(m, 3);
 export const GetTranslation = GetT;
+export const Clamp = (value,minimum,maximum) => f32(Math.max(f32(minimum),Math.min(f32(maximum),f32(value))));
+export class Mat3 {
+  constructor(...values) {
+    const source=values.length===1&&values[0] instanceof Mat3?values[0].data:
+      values.length===3&&values.every(v=>v instanceof Vec3)?values.flatMap(v=>[...v.data]):values;
+    requireCondition(source.length===0||source.length===9,'INVALID_ARGUMENT','Mat3 requires nine scalars or three Vec3 columns');
+    this.data=source.length?Float32Array.from(source,f32):new Float32Array([1,0,0,0,1,0,0,0,1]);
+  }
+  static get Identity() { return new Mat3(); }
+}
+export function Mat3LookAt(front,up) {
+  requireCondition(front instanceof Vec3 && (up===undefined||up instanceof Vec3),'INVALID_ARGUMENT','Expected Vec3 direction/up');
+  const length=Len(front);if(Math.abs(length)<1e-6)return Mat3.Identity;
+  const z=front.div(length);
+  const x=up?Normalize(Cross(Normalize(up),z)):
+    Math.abs(z.x)>1e-6||Math.abs(z.z)>1e-6?Normalize(new Vec3(z.z,0,-z.x)):new Vec3(-1,0,0);
+  return new Mat3(x,up?Normalize(Cross(z,x)):Cross(z,x),z);
+}
+export function ToEuler(matrix,order=4) {
+  requireCondition(matrix instanceof Mat3&&order===4,'UNSUPPORTED_OVERLOAD','ToEuler currently supports Mat3 with the native default YXZ order');
+  const m=matrix.data, cosine=Math.hypot(m[1],m[4]), x=Math.atan2(-m[7],cosine);
+  return cosine>1.1920929e-7?new Vec3(x,Math.atan2(m[6],m[8]),Math.atan2(m[1],m[4])):
+    new Vec3(x,0,-Math.sign(-m[7])*Math.atan2(-m[2],m[0]));
+}
 export const TranslationMat4 = p => new Mat4(1, 0, 0, 0, 1, 0, 0, 0, 1, p.x, p.y, p.z);
 export const ScaleMat4 = s => new Mat4(s.x, 0, 0, 0, s.y, 0, 0, 0, s.z, 0, 0, 0);
 

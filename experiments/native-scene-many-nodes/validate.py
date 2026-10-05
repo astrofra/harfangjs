@@ -258,7 +258,7 @@ def main():
             page.goto(origin)
             page.wait_for_function('window.manyNodes?.host?.frames>=4')
             independent = page.evaluate('''async()=>{const hg=await import('harfang'),host=window.manyNodes.host;host.pause();
-              const nodes=host.currentScene.GetNodes(),a=nodes[3].GetObject().GetMaterial(0),b=nodes[4].GetObject().GetMaterial(0);
+              const nodes=host.currentScene.GetNodes(),a=nodes.get(3).GetObject().GetMaterial(0),b=nodes.get(4).GetObject().GetMaterial(0);
               hg.SetMaterialValue(a,'uDiffuseColor',new hg.Vec4(0,1,0));
               return a!==b&&hg.GetMaterialValue(b,'uDiffuseColor').x===1&&hg.GetMaterialValue(a,'uDiffuseColor').x===0;}''')
             assert independent

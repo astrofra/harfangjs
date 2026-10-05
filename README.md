@@ -8,6 +8,14 @@ now runs the original `scene_many_nodes.js` unchanged: 10,201 animated spheres,
 native program compiler. Its browser window helper and asset profile are separate
 from the W2 gallery. The shared API fixture and images are compared with native HG JS.
 
+The [Mouse Flight experiment](experiments/native-game-mouse-flight/README.md) also
+runs its native entry unchanged. It extends the same facade and native compiler
+with authored scenes, static instances, PBR base-color textures, HDR environment
+probes, four directional shadow splits, mouse input and a 2D cursor. Run
+`python experiments/native-game-mouse-flight/build.py` followed by
+`python experiments/native-game-mouse-flight/serve.py`, then open
+**http://localhost:8002/**.
+
 **Compatibility priority: HG Lua -> native HG JS -> web HG JS.** Native HG JS
 prioritizes conformity with HG Lua. This web implementation adapts on a
 best-effort basis to run native HG JS projects, with documented adaptations and
@@ -20,7 +28,9 @@ by HG Lua, Python and HG JS native. HG JS Web requires a separate, standalone
 native desktop compiler in `tools/native/` for scenes, models, textures and HDR
 probes, distributed for Windows/macOS/Linux on x86-64 and ARM64. Its CLI follows `assetc`, with fewer
 options and a fixed WebGL 2 target (no graphics-backend selection). This product
-is still pending; see the [compiler specification](../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md).
+is still pending as a complete cross-platform distribution. The two native
+tutorial experiments now exercise standalone program and static-scene compiler
+slices on Windows x64; see the [compiler specification](../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md).
 
 W1 adds native JSON scene loading, hierarchy, perspective/orthographic cameras, indexed meshes and material slots, unlit PNG/JPEG materials, fixed cube/plane drawing, and an offline web asset writer. The room includes two cameras, a parented prop, negative scale, UV seams, and a disabled object. Existing line, input, lifecycle, and JS behavior examples remain available.
 
@@ -54,4 +64,4 @@ The selector includes **`scene_pbr.materials`**, `material_update_value.no_shado
 
 Details: [acceptance evidence](docs/acceptance.md), [portable contract](docs/contract.md), [asset format and tooling](docs/static-assets.md), [binding inventory](contract/binding-inventory.json), and [56-family tutorial manifest](contract/tutorials.json).
 
-**Native HarfangJs has an executable compatibility gate.** Its external QuickJS binding uses the existing engine with Lua scene systems. Three native tutorials are ported from Lua/Squirrel: animated lines, models without a scene pipeline, and texture loading. Shared math/scene fixtures run through C++ bindings and the browser. See [native QuickJS integration](docs/native-quickjs.md) for commands and limits. The complete W1/W2 portable application facade remains pending. Shadows, environment probes, scene instances, animation, skinning, audio, and portable UI remain deferred in the web profile.
+**Native HarfangJs has an executable compatibility gate.** Its external QuickJS binding uses the existing engine with Lua scene systems. Three native tutorials are ported from Lua/Squirrel: animated lines, models without a scene pipeline, and texture loading. Shared math/scene fixtures run through C++ bindings and the browser. See [native QuickJS integration](docs/native-quickjs.md) for commands and limits. The complete W1/W2 portable application facade remains pending. The separate native tutorial profiles above implement bounded shadow, environment and instance support; animation, skinning, audio and portable UI remain deferred.

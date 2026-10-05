@@ -5,10 +5,11 @@ import {profile} from '../profile.js';
 
 export const A_Position = 'Position', A_Color0 = 'Color0', AT_Float = 'Float';
 export class VertexLayout {
-  #attributes = []; #done = false;
-  Begin() { this.#attributes = []; this.#done = false; return this; }
+  #attributes = []; #done = false; #colorCount=0;
+  Begin() { this.#attributes = []; this.#done = false;this.#colorCount=0; return this; }
   Add(attribute, count, type) {
-    requireCondition(!this.#done && count === 3 && type === AT_Float, 'UNSUPPORTED_LAYOUT', 'W0 attributes require Float x3');
+    requireCondition(!this.#done && (count===3||attribute===A_Color0&&count===4) && type === AT_Float, 'UNSUPPORTED_LAYOUT', 'Position requires Float x3; Color0 requires Float x3 or x4');
+    if(attribute===A_Color0)this.#colorCount=count;
     this.#attributes.push(attribute); return this;
   }
   End() {
@@ -16,13 +17,14 @@ export class VertexLayout {
     this.#done = true; return this;
   }
   get hasColor() { requireCondition(this.#done, 'INVALID_LAYOUT', 'Call End() first'); return this.#attributes.length === 2; }
+  get colorCount(){return this.hasColor?this.#colorCount:0;}
 }
 export class Vertices {
   #data; #capacity; #color; #cursor = -1; #written = new Set(); #positionSet = false; #colorSet = false;
   constructor(layout, count) {
     this.#capacity = integer(count, 2, profile.limits.maxLineVertices, 'vertex count');
-    this.#color = layout.hasColor;
-    this.#data = new Float32Array(count * (this.#color ? 6 : 3));
+    this.#color = layout.colorCount;
+    this.#data = new Float32Array(count * (3+this.#color));
   }
   #alive() { requireCondition(this.#data, 'DISPOSED', 'Vertices are disposed'); }
   Clear() { this.#alive(); this.#written.clear(); this.#cursor = -1; return this; }
@@ -38,14 +40,14 @@ export class Vertices {
   SetColor0(color) {
     this.#alive();
     requireCondition(this.#cursor >= 0 && this.#color && color instanceof Color, 'INVALID_VERTEX', 'Color0 layout and Color required');
-    this.#data.set(color.data.subarray(0, 3), this.#cursor * this.stride + 3); this.#colorSet = true; return this;
+    this.#data.set(color.data.subarray(0, this.#color), this.#cursor * this.stride + 3); this.#colorSet = true; return this;
   }
   End() {
     requireCondition(this.#cursor >= 0 && this.#positionSet && (!this.#color || this.#colorSet), 'INVALID_VERTEX', 'Vertex attributes are incomplete');
     this.#written.add(this.#cursor); this.#cursor = -1; return this;
   }
-  get stride() { return this.#color ? 6 : 3; }
-  get hasColor() { return this.#color; }
+  get stride() { return 3+this.#color; }
+  get hasColor() { return !!this.#color; }
   get count() { return this.#written.size; }
   dataForUpload() {
     this.#alive();
@@ -96,13 +98,13 @@ export class LineRenderer {
     requireCondition(!this.#disposed, 'DISPOSED', 'Renderer is disposed');
     requireCondition(!this.#gl.isContextLost(), 'CONTEXT_LOST', 'WebGL context lost; restart the W0 application after restoration');
   }
-  createLineProgram(logicalId) {
+  createLineProgram(logicalId, compiledSources) {
     this.#alive();
     requireCondition(profile.linePrograms.includes(logicalId), 'UNSUPPORTED_PROGRAM', 'No reviewed WebGL line adapter', logicalId);
     const gl = this.#gl, shaders = [];
     let program;
     try {
-      for (const [type, source] of [[gl.VERTEX_SHADER, vertexShader], [gl.FRAGMENT_SHADER, fragmentShader]]) {
+      for (const [type, source] of [[gl.VERTEX_SHADER, compiledSources?.vertex??vertexShader], [gl.FRAGMENT_SHADER, compiledSources?.fragment??fragmentShader]]) {
         const shader = gl.createShader(type);
         requireCondition(shader, 'GPU_ALLOCATION_FAILED', 'Cannot allocate shader', logicalId);
         shaders.push(shader); gl.shaderSource(shader, source); gl.compileShader(shader);
@@ -146,7 +148,7 @@ export class LineRenderer {
     }
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, data);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, vertices.stride * 4, 0);
-    if (entry.color) { gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12); }
+    if (entry.color) { gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, vertices.stride-3, gl.FLOAT, false, vertices.stride*4, 12); }
     else { gl.disableVertexAttribArray(1); gl.vertexAttrib3f(1, 1, 1, 1); }
     gl.useProgram(entry.program); gl.uniformMatrix4fv(entry.matrix, false, matrix.toArray());
     gl.drawArrays(gl.LINES, 0, vertices.count); gl.bindVertexArray(null);

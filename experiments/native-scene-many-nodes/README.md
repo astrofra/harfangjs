@@ -164,6 +164,9 @@ W2 import map. It does not launch the implemented compatibility experiment; its
 original result is historical evidence in the
 [feasibility specification](../../../harfang3d/specifications/SPECS_HARFANGJS_WEB_NATIVE_SCENE_MANY_NODES_FEASIBILITY.md).
 
-Next, use neighboring native tutorials to extend the same public API and compiler
-contract to textures, authored scenes and HDR. Keep the reduced gallery case
-`scene_many_nodes.small.no_shadows` separate from this full experiment.
+The [Mouse Flight experiment](../native-game-mouse-flight/README.md) now extends
+the same API facade and compiler to textures, authored scenes, instances and HDR.
+The common facade returns native `NodeList` values from `GetNodes`/`GetAllNodes`
+and caches world matrices until the next scene update. Browser diagnostics use
+`nodes.get(i)` accordingly. The reduced gallery case
+`scene_many_nodes.small.no_shadows` remains separate from this full experiment.

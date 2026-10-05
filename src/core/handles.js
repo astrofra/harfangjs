@@ -35,6 +35,7 @@ export class HandlePool {
     this.#free.push(token.index);
   }
   get size() { return this.#count; }
+  forEach(callback) { for(const slot of this.#slots)if(slot.alive)callback(slot.value); }
   dispose() {
     this.#disposed = true;
     this.#slots.length = 0;

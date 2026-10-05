@@ -4,7 +4,7 @@ export * from './core/time.js';
 export * from './core/input.js';
 export {ResourceManager} from './core/resources.js';
 export {createRunner} from './core/lifecycle.js';
-export {Scene, Node, Transform, Camera, ObjectComponent, Light, LT_Linear, LT_Point, LT_Spot} from './scene/scene.js';
+export {Scene, Node, Transform, Camera, ObjectComponent, Light, Instance, SceneView, LT_Linear, LT_Point, LT_Spot} from './scene/scene.js';
 export {ScriptManager} from './scene/scripts.js';
 export * from './render/lines.js';
 export {profile, requireCapabilities, validateManifest, validatePortableModule} from './profile.js';

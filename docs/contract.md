@@ -28,6 +28,14 @@ uses a separate `web-native-forward/1` import map and tests one identical API
 fixture against native HG JS. The older W1/W2 adaptations documented below are
 not a claim of complete native API compatibility.
 
+The [Mouse Flight experiment](../experiments/native-game-mouse-flight/README.md)
+extends that same facade with the `web-native-scene/1` asset profile. It exercises
+unchanged native scene/instance loading, HDR PBR rendering, directional shadows,
+mouse snapshots and 2D lines. Its contract also checks native `NodeList` returns,
+`BigInt` counts and world matrices cached until the next scene update. These
+native-shaped semantics are selected by the experiment's import map; they do not
+change the older W1/W2 array-based application contract described below.
+
 ## Source and module boundaries
 
 The asset authoring boundary is the same uncompiled source tree for every
@@ -37,8 +45,10 @@ Lua/Python; only the Web runtime needs Web compiled outputs. The required
 runs on Windows/macOS/Linux, x86-64 and ARM64, is implemented in
 `harfangjs/tools/native/`, and has an assetc-compatible CLI and a
 fixed WebGL 2 target. Scenes, models, textures and HDR probe generation are part
-of its delivery scope. This compiler product is pending; the implemented W1/W2
-runtime and prototype writer below do not yet provide the HDR environment path.
+of its delivery scope. The complete compiler distribution is pending; a
+standalone Windows x64 slice now compiles both native tutorial experiments,
+including Mouse Flight's HDR probes. The W1/W2 runtime and prototype writer below
+retain their separate asset profile and do not provide that HDR environment path.
 
 The source specs are in the sibling `harfang3d/specifications/` directory:
 

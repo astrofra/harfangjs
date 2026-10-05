@@ -7,10 +7,12 @@
 #include <iostream>
 #include <set>
 #include <cwchar>
+#include <cmft/print.h>
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
 static void check(bool ok, const std::string &message) { if(!ok) throw std::runtime_error(message); }
+static int quiet_print(const char *,...) {return 0;}
 static std::string read(const fs::path &p) {
   std::ifstream in(p,std::ios::binary); check(bool(in),"Missing source dependency: "+p.u8string());
   return {std::istreambuf_iterator<char>(in),std::istreambuf_iterator<char>()};
@@ -32,6 +34,7 @@ static bool contains(const fs::path &parent,const fs::path &child) {
   }
   return true;
 }
+#include "scene_assets.h"
 static int run(const std::vector<std::string> &args) {
   bool quiet=false,verbose=false,progress=false;
   std::vector<fs::path> paths;
@@ -39,9 +42,9 @@ static int run(const std::vector<std::string> &args) {
     const auto &arg=args[i];
     if(arg=="--help" || arg=="-h") {
       std::cout<<"assetc-web [options] <input-directory> [output-directory]\n"
-        "Program pilot: reviewed default.hps, untextured forward + spotlight shadows.\n"
+        "Reviewed default/PBR/line programs, static scenes/geometry, PNG/DDS and HDR probes.\n"
         "-q/-quiet -v/-verbose -progress -j/-job N -l/-log_errors_to_stderr\n"
-        "Fixed WebGL 2 target; unsupported options/content fail. Native scenes/textures/HDR pending.\n"; return 0;
+        "Fixed WebGL 2 target; unsupported options/content fail.\n"; return 0;
     } else if(arg=="-q" || arg=="-quiet") quiet=true;
     else if(arg=="-v" || arg=="-verbose") verbose=true;
     else if(arg=="-progress") progress=true;
@@ -53,11 +56,14 @@ static int run(const std::vector<std::string> &args) {
     } else { check(arg.empty() || arg[0]!='-',"Unsupported option: "+arg); paths.push_back(fs::u8path(arg)); }
   }
   check(paths.size()==1 || paths.size()==2,"Usage: assetc-web [options] <input-directory> [output-directory]");
+  if(quiet)cmft::setInfoPrintf(quiet_print);
   const auto source=fs::weakly_canonical(fs::absolute(paths[0]));
   const auto output=fs::weakly_canonical(fs::absolute(paths.size()==2 ? paths[1] : fs::u8path(paths[0].u8string()+"_compiled")));
   check(fs::is_directory(source),"Input is not a directory");
   check(!contains(source,output) && !contains(output,source),"Source and output must be disjoint");
-  const auto approved=json::parse(approved_sources);
+  auto approved=json::parse(approved_sources);
+  const bool scene_profile=fs::exists(source/"core/shader/pbr.hps");
+  if(scene_profile) {const auto extra=json::parse(scene_approved_sources);for(auto it=extra.begin();it!=extra.end();++it)approved[it.key()]=it.value();}
   json source_hashes=json::object();
   for(auto it=approved.begin();it!=approved.end();++it) {
     const auto p=source/fs::u8path(it.key());
@@ -66,10 +72,16 @@ static int run(const std::vector<std::string> &args) {
     check(sha256(lf(bytes))==it.value().get<std::string>(),"Unreviewed shader source: "+it.key()+"; update the Web adapter and its provenance first");
     source_hashes[it.key()]=sha256(bytes);
   }
+  AssetOutputs compiled;std::vector<std::pair<std::string,std::string>> inputs;
   for(const auto &entry:fs::recursive_directory_iterator(source)) {
     check(!entry.is_symlink(),"Symbolic links are unsupported in compiler inputs");
-    if(entry.is_regular_file()) check(approved.contains(fs::relative(entry.path(),source).generic_u8string()),
-      "Unsupported input in program pilot: "+fs::relative(entry.path(),source).generic_u8string());
+    if(!entry.is_regular_file())continue;
+    const auto name=fs::relative(entry.path(),source).generic_u8string();
+    check(contains(source,fs::canonical(entry.path())),"Input escapes source directory");
+    if(approved.contains(name))continue;
+    const auto extension=entry.path().extension().string();
+    check(scene_profile&&(extension==".scn"||extension==".geo"||extension==".png"||extension==".dds"||extension==".hdr"||extension==".meta"),"Unsupported input: "+name);
+    auto data=read(entry.path());source_hashes[name]=sha256(data);inputs.emplace_back(name,std::move(data));
   }
   json program={{"schema","harfang-web-program/1"},{"adapter","default-spot-instanced/1"},
     {"logicalId","core/shader/default.hps"},{"sourceHashes",source_hashes},
@@ -78,19 +90,43 @@ static int run(const std::vector<std::string> &args) {
     {"forward",{{"vertex",default_vertex},{"fragment",default_fragment}}},
     {"depth",{{"vertex",depth_vertex},{"fragment",depth_fragment}}}};
   auto bytes=program.dump(2)+"\n", digest=sha256(bytes), uri="objects/"+digest+".program.json";
+  compiled.add("core/shader/default.hps","program",bytes);
+  if(scene_profile) {
+    json pbr={{"schema","harfang-web-program/1"},{"adapter","pbr-scene-instanced/1"},{"logicalId","core/shader/pbr.hps"},{"sourceHashes",source_hashes},
+      {"variants",{"base-color-unskinned"}},{"requires",{"render.forward","render.directional-shadow","render.environment","render.textures"}},
+      {"forward",{{"vertex",pbr_vertex},{"fragment",pbr_fragment}}},{"depth",{{"vertex",depth_vertex},{"fragment",depth_fragment}}}};
+    compiled.add("core/shader/pbr.hps","program",pbr.dump(2)+"\n");
+    json line={{"schema","harfang-web-program/1"},{"adapter","pos-rgb/1"},{"logicalId","shaders/pos_rgb"},{"sourceHashes",source_hashes},
+      {"variants",{"color"}},{"requires",{"render.lines"}},{"forward",{{"vertex",line_vertex},{"fragment",line_fragment}}}};
+    compiled.add("shaders/pos_rgb","program",line.dump(2)+"\n");
+    for(const auto &input:inputs) {
+      const auto extension=fs::u8path(input.first).extension().string();
+      if(extension==".geo")compiled.add(input.first,"geometry",convert_geometry(input.second).dump()+"\n");
+      else if(extension==".scn") {
+        const auto scene=json::parse(input.second);const auto deps=scene_dependencies(scene);
+        compiled.add(input.first,"scene",scene.dump()+"\n",{{"dependencies",deps}});
+      } else if(extension!=".meta")compile_image(compiled,source,input.first,input.second);
+    }
+    for(const auto &entry:compiled.assets.items())for(const auto &dep:entry.value()["dependencies"])
+      check(compiled.assets.contains(dep.get<std::string>()),"Missing compiled dependency: "+dep.get<std::string>());
+  }
   json manifest={{"schema","harfang-web-program-assets/1"},{"api","harfang-js/1"},
     {"profile","web-native-forward/1"},{"compiler","assetc-web/program-1"},
     {"buildId",digest},{"maxNodes",16384},
     {"assets",{{"core/shader/default.hps",{{"kind","program"},{"uri",uri},{"sha256",digest},
       {"byteLength",bytes.size()},{"dependencies",json::array()}}}}}};
+  manifest["assets"]=compiled.assets;manifest["sourceHashes"]=source_hashes;
+  if(scene_profile){manifest["profile"]="web-native-scene/1";manifest["compiler"]="assetc-web/scene-1";manifest["buildId"]=sha256(compiled.assets.dump());}
   // All inputs validated before any output mutation. Immutable content is written
   // first; the manifest is the commit point. Retain old objects for open clients.
   if(fs::exists(output)) check(fs::is_regular_file(output/".assetc-web-program-output"),"Refusing unmarked output: "+output.u8string());
   fs::create_directories(output);
   write(output/".assetc-web-program-output","assetc-web/program-1\n");
-  const auto object=output/fs::u8path(uri);
-  if(fs::exists(object)) check(read(object)==bytes,"Corrupt existing output object: "+object.u8string());
-  else write(object,bytes);
+  for(const auto &payload:compiled.objects) {
+    const auto object=output/fs::u8path(payload.first);
+    if(fs::exists(object)) check(read(object)==payload.second,"Corrupt existing output object: "+object.u8string());
+    else write(object,payload.second);
+  }
   write(output/"manifest.json.tmp",manifest.dump(2)+"\n");
   // Windows rename cannot replace a destination; restore the previous manifest
   // on publication failure. No recursive deletion or source writes.
@@ -100,7 +136,7 @@ static int run(const std::vector<std::string> &args) {
   try { fs::rename(output/"manifest.json.tmp",current); }
   catch(...) { if(fs::exists(backup)) fs::rename(backup,current); throw; }
   if(fs::exists(backup)) fs::remove(backup);
-  if(!quiet) std::cout<<"Compiled 1 program, "<<source_hashes.size()<<" reviewed source files -> "<<output.u8string()<<"\n";
+  if(!quiet) std::cout<<"Compiled "<<compiled.assets.size()<<" assets, "<<source_hashes.size()<<" source files -> "<<output.u8string()<<"\n";
   if(verbose && !quiet) std::cout<<"SHA256 "<<digest<<"\n";
   if(progress && !quiet) std::cout<<"100%\n";
   return 0;

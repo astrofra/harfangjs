@@ -3,7 +3,7 @@ import {profile, requireCapabilities, validateLogicalPath} from '../profile.js';
 import {materialContract} from '../render/material-contract.js';
 
 export const nullReference = value => value === null || value === undefined || value === 4294967295;
-export function validateSceneJSON(scene, {source = 'scene', structure = false, lighting = false, ignoreShadows = false, ambientEnvironment = false} = {}) {
+export function validateSceneJSON(scene, {source = 'scene', structure = false, lighting = false, ignoreShadows = false, ambientEnvironment = false, maxNodes=profile.limits.maxNodes} = {}) {
   const check = (ok, message, path = '') => requireCondition(ok, 'INVALID_SCENE', message, `${source}${path}`);
   check(scene && typeof scene === 'object' && !Array.isArray(scene), 'Expected native JSON scene object');
   requireCapabilities(scene.requires ?? [], source);
@@ -20,7 +20,7 @@ export function validateSceneJSON(scene, {source = 'scene', structure = false, l
   }
   requireCondition(lighting || structure || !scene.lights?.length, 'UNSUPPORTED_SCENE_FEATURE', 'Lighting requires a forward scene', source);
   const transforms = scene.transforms ?? [], cameras = scene.cameras ?? [], objects = scene.objects ?? [], nodes = scene.nodes ?? [];
-  check(nodes.length <= profile.limits.maxNodes, 'Node budget exceeded');
+  check(nodes.length <= maxNodes, 'Node budget exceeded');
   const ids = new Map();
   nodes.forEach((node, i) => {
     const path = `.nodes[${i}]`;

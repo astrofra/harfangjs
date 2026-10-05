@@ -7,8 +7,42 @@ file(READ "${CMAKE_CURRENT_SOURCE_DIR}/adapters/default.frag" DEFAULT_FRAGMENT)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/adapters/depth.vert" DEPTH_VERTEX)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/adapters/depth.frag" DEPTH_FRAGMENT)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/adapters/source-hashes.json" APPROVED_SOURCES)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/adapters/scene-source-hashes.json" SCENE_APPROVED_SOURCES)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/adapters/pbr.vert" PBR_VERTEX)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/adapters/pbr.frag" PBR_FRAGMENT)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/adapters/pos_rgb.vert" LINE_VERTEX)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/adapters/pos_rgb.frag" LINE_FRAGMENT)
 configure_file(adapters/embedded.h.in generated/embedded.h @ONLY)
 add_executable(assetc-web assetc_web.cpp)
+set(CMFT_SOURCE "${HARFANG_SOURCE}/extern/cmft")
+# This CMFT revision's memory reader ignores its cursor. Correct the private
+# build copy so Unicode paths and already-validated input bytes use memory I/O.
+# Keep the shared native dependency checkout untouched.
+file(READ "${CMFT_SOURCE}/src/cmft/image.cpp" CMFT_IMAGE)
+set(CMFT_READ_BUG "memcpy(_data, _rw->m_mem, sizeToRead);")
+string(FIND "${CMFT_IMAGE}" "${CMFT_READ_BUG}" CMFT_READ_BUG_OFFSET)
+if(CMFT_READ_BUG_OFFSET LESS 0)
+  message(FATAL_ERROR "CMFT memory reader changed; review the local correction")
+endif()
+string(REPLACE "${CMFT_READ_BUG}" "memcpy(_data, static_cast<const uint8_t*>(_rw->m_mem) + _rw->m_offset - sizeToRead, sizeToRead);" CMFT_IMAGE "${CMFT_IMAGE}")
+string(REPLACE "_rw->m_size  = _size;" "_rw->m_size  = _size; _rw->m_offset = 0;" CMFT_IMAGE "${CMFT_IMAGE}")
+string(REPLACE "return (NULL != _rw->m_file);" "return RwType::Memory == _rw->m_type ? (NULL != _rw->m_mem) : (NULL != _rw->m_file);" CMFT_IMAGE "${CMFT_IMAGE}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/cmft_image.cpp" "${CMFT_IMAGE}")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  "${CMFT_SOURCE}/src/cmft/image.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/adapters/pbr.vert" "${CMAKE_CURRENT_SOURCE_DIR}/adapters/pbr.frag"
+  "${CMAKE_CURRENT_SOURCE_DIR}/adapters/pos_rgb.vert" "${CMAKE_CURRENT_SOURCE_DIR}/adapters/pos_rgb.frag")
+add_library(assetc_web_cmft STATIC
+  "${CMFT_SOURCE}/src/cmft/common/stb_image.cpp" "${CMFT_SOURCE}/src/cmft/common/print.cpp"
+  "${CMFT_SOURCE}/src/cmft/allocator.cpp" "${CMFT_SOURCE}/src/cmft/clcontext.cpp"
+  "${CMFT_SOURCE}/src/cmft/cubemapfilter.cpp" "${CMAKE_CURRENT_BINARY_DIR}/generated/cmft_image.cpp")
+target_include_directories(assetc_web_cmft PUBLIC "${CMFT_SOURCE}/include" PRIVATE "${CMFT_SOURCE}/dependency" "${CMFT_SOURCE}/src/cmft")
+target_compile_definitions(assetc_web_cmft PRIVATE _CRT_SECURE_NO_WARNINGS)
+set_property(TARGET assetc_web_cmft PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+if(UNIX)
+  target_link_libraries(assetc_web_cmft PRIVATE pthread ${CMAKE_DL_LIBS})
+endif()
+target_link_libraries(assetc-web PRIVATE assetc_web_cmft)
 target_compile_features(assetc-web PRIVATE cxx_std_17)
 target_include_directories(assetc-web PRIVATE "${HARFANG_SOURCE}/extern" "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set_property(TARGET assetc-web PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

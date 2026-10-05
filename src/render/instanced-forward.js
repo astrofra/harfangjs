@@ -2,7 +2,7 @@ import {requireCondition} from '../core/errors.js';
 import {Mat44, Vec2, Inverse, ComputeAspectRatioX, ComputePerspectiveProjectionMatrix, FovToZoomFactor} from '../core/math.js';
 import {modelData, watchModel} from './models.js';
 import {frameLighting, applyMaterialState} from './forward.js';
-import {transformWorldData, objectModel, LT_Linear, LT_Spot} from '../scene/scene.js';
+import {allSceneNodes,transformWorldData, objectModel, LT_Linear, LT_Spot} from '../scene/scene.js';
 import {profile} from '../compat/profile.js';
 
 // Experimental native-call renderer. Shader programs come only from assetc-web.
@@ -24,7 +24,7 @@ export class InstancedForwardRenderer {
   checkBudget(bytes) { requireCondition(this.stats.gpuBytes+bytes<=profile.limits.maxGPUBytes,'RESOURCE_BUDGET','Native forward GPU budget exceeded (128 MiB)'); }
   prepare(program) {
     this.alive();
-    requireCondition(program.adapter === 'default-spot-instanced/1', 'UNSUPPORTED_PROGRAM', 'Unknown compiled program adapter');
+    requireCondition(['default-spot-instanced/1','pbr-scene-instanced/1'].includes(program.adapter), 'UNSUPPORTED_PROGRAM', 'Unknown compiled program adapter');
     if (this.program === program) return;
     requireCondition(!this.program, 'UNSUPPORTED_PROGRAM', 'This renderer supports one compiled program family');
     const start = performance.now(), made = [];
@@ -40,7 +40,7 @@ export class InstancedForwardRenderer {
         handle = gl.createProgram(); requireCondition(handle,'GPU_ALLOCATION_FAILED','Cannot allocate program');
         shaders.forEach(shader => gl.attachShader(handle,shader)); gl.linkProgram(handle);
         requireCondition(gl.getProgramParameter(handle,gl.LINK_STATUS),'SHADER_FAILED',gl.getProgramInfoLog(handle));
-        const names = 'viewProjection view shadowProjection eye ambient fogColor fog lightPos lightDir lightDiffuse lightSpecular base surface self shadowMap hasShadow shadowBias shadowTexel'.split(' ');
+        const names = 'viewProjection view shadowProjection eye ambient fogColor fog lightPos lightDir lightDiffuse lightSpecular base surface self shadowMap hasShadow shadowBias shadowTexel linearProjection[0] linearSplits linearShadowMap linearShadowBias linearShadowTexel hasLinearShadow hasBaseMap baseMap brdfMap irradianceMap radianceMap hasEnvironment'.split(' ');
         return {handle,uniforms:Object.fromEntries(names.map(name => [name,gl.getUniformLocation(handle,`u_${name}`)]))};
       } catch (error) { if (handle) gl.deleteProgram(handle); throw error; }
       finally { shaders.forEach(shader => gl.deleteShader(shader)); }
@@ -85,7 +85,8 @@ export class InstancedForwardRenderer {
     const key = `${mesh.id}/${submeshIndex}/${material.batchKey}`;
     if (this.batches.has(key)) return this.batches.get(key);
     const state = material.source;
-    requireCondition(material.family==='default' && !material.textures().length && !(state.flags?.length) &&
+    const pbr=this.program.adapter==='pbr-scene-instanced/1';
+    requireCondition(material.family===(pbr?'pbr':'default') && (pbr||!material.textures().length) && !(state.flags?.length) &&
       (state.blend_mode??'opaque')==='opaque', 'UNSUPPORTED_MATERIAL', 'Native forward pilot supports opaque, untextured default materials');
     const gl = this.gl, batch = {mesh,material,state,submesh:mesh.data.submeshes[submeshIndex],count:0,
       matrices:new Float32Array(16*64),gpuBytes:0,buffer:gl.createBuffer(),vao:gl.createVertexArray()};
@@ -95,6 +96,7 @@ export class InstancedForwardRenderer {
     }
     gl.bindVertexArray(batch.vao); gl.bindBuffer(gl.ARRAY_BUFFER,mesh.vertices); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.indices);
     for (let i=0;i<2;++i) { gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i,3,gl.FLOAT,false,mesh.data.stride*4,i*12); }
+    gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,2,gl.FLOAT,false,mesh.data.stride*4,24);
     gl.bindBuffer(gl.ARRAY_BUFFER,batch.buffer);
     for(let i=0;i<4;++i) { gl.enableVertexAttribArray(4+i); gl.vertexAttribPointer(4+i,4,gl.FLOAT,false,64,i*16); gl.vertexAttribDivisor(4+i,1); }
     gl.bindVertexArray(null); this.batches.set(key,batch); ++this.stats.instanceBuffers; return batch;
@@ -102,7 +104,7 @@ export class InstancedForwardRenderer {
   collect(scene) {
     for(const batch of this.batches.values()) batch.count=0;
     let instances=0;
-    for(const node of scene.GetNodes()) {
+    for(const node of allSceneNodes(scene)) {
       if(!node.IsEnabled()) continue;
       const object=node.GetObject(); if(!object.IsValid()) continue;
       const mesh=this.mesh(objectModel(object)), world=transformWorldData(node.GetTransform());
