@@ -5,7 +5,7 @@ import {materialContract} from './material-contract.js';
 
 // Materials borrow image resources; the scene or explicit caller owns their lifetime.
 export class Material {
-  #source; #pictures = new Map(); #diagnostic; #revision = 0;
+  #source; #pictures = new Map(); #diagnostic; #revision = 0; #batchKey;
   constructor(source, pictures = new Map(), {structure = false} = {}) {
     validateMaterial(source, {structure});
     this.#source = structuredClone(source); this.#diagnostic = structure && source.program === 'core/shader/pbr.hps';
@@ -21,6 +21,8 @@ export class Material {
   get diagnostic() { return this.#diagnostic; }
   get program() { return this.#diagnostic ? 'shaders/unlit.hps' : this.#source.program; }
   get revision() { return this.#revision; }
+  get batchKey() { return this.#batchKey ??= JSON.stringify(this.#source); }
+  clone() { return new Material(this.#source, this.#pictures, {structure:this.#diagnostic}); }
   get variantKey() {
     return `${this.program}:${[...this.#pictures.keys()].sort().join(',')}:${(this.#source.flags ?? []).slice().sort().join(',')}`;
   }
@@ -39,7 +41,7 @@ export class Material {
     const next = this.source; next.values = next.values ?? [];
     const record = {name,type:'vec4',value:[...value.data]}, index = next.values.findIndex(v => v.name === name);
     if (index < 0) next.values.push(record); else next.values[index] = record;
-    validateMaterial(next, {structure:this.#diagnostic}); this.#source = next; ++this.#revision;
+    validateMaterial(next, {structure:this.#diagnostic}); this.#source = next; this.#batchKey = undefined; ++this.#revision;
   }
   setTexture(name, picture, stage) {
     const expected = materialContract.families[this.#source.program].textures[name];
@@ -48,13 +50,13 @@ export class Material {
     const next = this.source; next.textures = (next.textures ?? []).filter(t => t.name !== name);
     if (picture) next.textures.push({name,stage,path:picture.logicalId});
     validateMaterial(next, {structure:this.#diagnostic});
-    this.#source = next;
+    this.#source = next; this.#batchKey = undefined;
     if (picture) this.#pictures.set(name,picture); else this.#pictures.delete(name);
     ++this.#revision;
   }
   setState(key, value) {
     requireCondition(['blend_mode','depth_test','face_culling','write_r','write_g','write_b','write_a','write_z','flags'].includes(key), 'INVALID_MATERIAL', `Unknown material state ${key}`);
-    const next = this.source; next[key] = value; validateMaterial(next,{structure:this.#diagnostic}); this.#source = structuredClone(next); ++this.#revision;
+    const next = this.source; next[key] = value; validateMaterial(next,{structure:this.#diagnostic}); this.#source = structuredClone(next); this.#batchKey = undefined; ++this.#revision;
   }
 }
 

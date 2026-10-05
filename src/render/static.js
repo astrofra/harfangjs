@@ -167,7 +167,7 @@ export class StaticRenderer extends LineRenderer {
     for (const node of scene.GetNodes()) {
       if (!node.IsEnabled()) continue;
       const object = node.GetObject(); if (!object.IsValid()) continue;
-      const materials = Array.from({length: object.GetMaterialCount()}, (_, i) => object.GetMaterial(i));
+      const materials = Array.from({length: Number(object.GetMaterialCount())}, (_, i) => object.GetMaterial(i));
       const model = object.GetModelRef(), world = node.GetTransform().GetWorld(), worldView = view.mul(world);
       modelData(model).submeshes.forEach((submesh,submeshIndex) => {
         const material = materials[submesh.material], command = {model,world,materials,submeshIndex};

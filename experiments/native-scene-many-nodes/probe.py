@@ -89,7 +89,7 @@ def main():
                   let allocationError;
                   try { for (let i=0; i<10204; ++i) scene.CreateNode(); }
                   catch (error) { allocationError = {code:error.code, message:error.message}; }
-                  const allocatedNodes = scene.GetNodeCount();
+                  const allocatedNodes = Number(scene.GetNodeCount());
                   scene.dispose();
                   let importError;
                   try { await import('/build/experiments/native-scene-many-nodes/source/scene_many_nodes.js'); }

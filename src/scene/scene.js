@@ -3,6 +3,7 @@ import {requireCondition, finite, integer} from '../core/errors.js';
 import {Vec3, Color, Deg, Mat4, Mat44, Inverse, TransformationMat4, FovToZoomFactor, ComputePerspectiveProjectionMatrix, ComputeOrthographicProjectionMatrix} from '../core/math.js';
 import {profile} from '../profile.js';
 import {Material} from '../render/materials.js';
+import {time_from_ns} from '../core/time.js';
 
 const handles = new WeakMap();
 const destructionObservers = new WeakMap();
@@ -41,11 +42,11 @@ class Handle {
 }
 export class Transform extends Handle {
   GetPos() { return new Vec3(value(this).pos); }
-  SetPos(v) { requireVec3(v); value(this).pos = new Vec3(v); }
+  SetPos(v) { requireVec3(v); value(this).pos.data.set(v.data); }
   GetRot() { return new Vec3(value(this).rot); }
-  SetRot(v) { requireVec3(v); value(this).rot = new Vec3(v); }
+  SetRot(v) { requireVec3(v); const state = value(this); state.rot.data.set(v.data); state.local = undefined; }
   GetScale() { return new Vec3(value(this).scale); }
-  SetScale(v) { requireVec3(v); value(this).scale = new Vec3(v); }
+  SetScale(v) { requireVec3(v); const state = value(this); state.scale.data.set(v.data); state.local = undefined; }
   GetPosRot() { return [this.GetPos(), this.GetRot()]; }
   SetPosRot(p, r) { requireVec3(p); requireVec3(r); this.SetPos(p); this.SetRot(r); }
   GetParent() { const v = value(this); return new Node(v.nodes, v.parent); }
@@ -63,11 +64,13 @@ export class Transform extends Handle {
   }
   ClearParent() { value(this).parent = undefined; }
   GetWorld() {
+    const first = value(this);
+    if (!first.nodes.valid(first.parent)) return new Mat4(localMatrix(first));
     const chain = [], seen = new Set(); let transform = this;
     while (transform.IsValid()) {
       const v = value(transform);
       requireCondition(!seen.has(v) && chain.length < profile.limits.maxHierarchyDepth, 'HIERARCHY_CYCLE', 'Invalid transform hierarchy');
-      seen.add(v); chain.push(TransformationMat4(v.pos, v.rot, v.scale));
+      seen.add(v); chain.push(localMatrix(v));
       const parent = transform.GetParent();
       if (!parent.IsValid()) break;
       transform = parent.GetTransform();
@@ -78,6 +81,30 @@ export class Transform extends Handle {
     for (const local of chain.reverse()) world = world.mul(local);
     return world;
   }
+}
+function localMatrix(state) {
+  state.local ??= TransformationMat4(state.pos, state.rot, state.scale);
+  state.local.data.set(state.pos.data, 9);
+  return state.local;
+}
+// Internal bridge for native CreateCamera/CreateObject/CreateSpotLight helpers.
+// Preserve the supplied affine matrix and expose decomposed TRS values.
+export function setTransformMatrix(transform, matrix) {
+  requireCondition(matrix instanceof Mat4, 'INVALID_ARGUMENT', 'Expected Mat4');
+  const state=value(transform), m=matrix.data;
+  let sx=Math.hypot(...m.slice(0,3)), sy=Math.hypot(...m.slice(3,6)), sz=Math.hypot(...m.slice(6,9));
+  requireCondition(sx>0&&sy>0&&sz>0,'INVALID_TRANSFORM','Singular matrix');
+  const determinant=m[0]*(m[4]*m[8]-m[5]*m[7])-m[3]*(m[1]*m[8]-m[2]*m[7])+m[6]*(m[1]*m[5]-m[2]*m[4]);
+  if(determinant<0) sx=-sx;
+  const x=Math.asin(Math.max(-1,Math.min(1,-m[7]/sz))), cx=Math.cos(x);
+  const y=Math.abs(cx)>1e-6?Math.atan2(m[6]/sz,m[8]/sz):Math.atan2(-m[2]/sx,m[0]/sx);
+  const z=Math.abs(cx)>1e-6?Math.atan2(m[1]/sx,m[4]/sy):0;
+  state.pos=new Vec3(m[9],m[10],m[11]); state.rot=new Vec3(x,y,z); state.scale=new Vec3(sx,sy,sz); state.local=new Mat4(matrix);
+}
+// Renderer-only borrowed storage; public GetWorld() continues to return a copy.
+export function transformWorldData(transform) {
+  const state=value(transform);
+  return state.nodes.valid(state.parent)?transform.GetWorld().data:localMatrix(state).data;
 }
 function requireVec3(v) { requireCondition(v instanceof Vec3, 'INVALID_ARGUMENT', 'Expected Vec3'); }
 export class Node extends Handle {
@@ -115,14 +142,25 @@ export class Camera extends Handle {
   }
 }
 export class ObjectComponent extends Handle {
-  GetModelRef() { return value(this).model; }
-  GetMaterialCount() { return value(this).materials.length; }
+  GetModelRef() { const state=value(this); return state.modelRef ?? state.model; }
+  GetMaterialCount() { return BigInt(value(this).materials.length); }
   GetMaterial(index) { const v = value(this); return v.materials[integer(index, 0, v.materials.length - 1, 'material index')]; }
   GetMaterialName(index) { const v = value(this); integer(index, 0, v.materials.length - 1, 'material index'); return v.names[index] ?? ''; }
   SetMaterialName(index, name) { const v = value(this); integer(index, 0, v.materials.length - 1, 'material index'); requireCondition(typeof name === 'string', 'INVALID_ARGUMENT', 'Expected material name'); v.names[index] = name; }
 }
-export const LT_Linear = 'linear', LT_Point = 'point', LT_Spot = 'spot';
+// Native LightType values. Serialized assets use names, decoded at the boundary.
+export const LT_Point = 0, LT_Spot = 1, LT_Linear = 2;
+export function setObjectModelReference(object, ref) { value(object).modelRef=ref; }
+export function objectModel(object) { return value(object).model; }
 export class Light extends Handle {
+  GetShadowType() { return value(this).shadowType ?? 0; }
+  SetShadowType(type) { requireCondition(type === 0 || type === 1, 'INVALID_LIGHT', 'Unknown shadow type'); value(this).shadowType = type; }
+  GetShadowBias() { return value(this).shadowBias ?? 0.0001; }
+  SetShadowBias(n) { value(this).shadowBias = positiveLight(n); }
+  GetShadowNear() { return value(this).shadowNear ?? 0.1; }
+  SetShadowNear(n) { requireCondition(finite(n)>0, 'INVALID_LIGHT', 'Shadow near must be positive'); value(this).shadowNear = n; }
+  GetShadowFar() { return value(this).shadowFar ?? 100; }
+  SetShadowFar(n) { requireCondition(finite(n)>0, 'INVALID_LIGHT', 'Shadow far must be positive'); value(this).shadowFar = n; }
   GetType() { return value(this).type; }
   SetType(type) { requireCondition([LT_Linear,LT_Point,LT_Spot].includes(type),'INVALID_LIGHT','Unknown light type'); value(this).type = type; }
   GetDiffuseColor() { return new Color(...value(this).diffuse.data); }
@@ -152,7 +190,12 @@ export class Scene {
   #lights = new HandlePool();
   #owned = [];
   #order = [];
+  #nodeWrappers;
   #disposed = false;
+  #maxNodes;
+  constructor({maxNodes = profile.limits.maxNodes} = {}) {
+    this.#maxNodes = integer(maxNodes, 1, 16384, 'scene node limit');
+  }
   canvas = {clear_color: true, clear_z: true, color: new Color(0.05, 0.06, 0.08)};
   metadata = {};
   environment = {ambient:Color.Black, fog_near:0, fog_far:0, fog_color:Color.Black};
@@ -160,23 +203,25 @@ export class Scene {
   CreateNode(name = '') {
     this.#assertAlive();
     requireCondition(typeof name === 'string', 'INVALID_ARGUMENT', 'Expected node name');
-    requireCondition(this.#nodes.size < profile.limits.maxNodes, 'RESOURCE_BUDGET', 'Scene node budget exceeded');
+    requireCondition(this.#nodes.size < this.#maxNodes, 'RESOURCE_BUDGET', 'Scene node budget exceeded');
     const ref = this.#nodes.allocate({name, transforms: this.#transforms, cameras: this.#cameras, objects: this.#objects, lights:this.#lights, transform: undefined, enabled: true});
     this.#order.push(ref);
+    this.#nodeWrappers=undefined;
     return new Node(this.#nodes, ref);
   }
   GetNode(name) {
     this.#assertAlive();
     return new Node(this.#nodes, this.#order.find(t => this.#nodes.valid(t) && this.#nodes.get(t).name === name));
   }
-  GetNodes() { this.#assertAlive(); return this.#order.filter(t => this.#nodes.valid(t)).map(t => new Node(this.#nodes, t)); }
-  GetNodeCount() { this.#assertAlive(); return this.#nodes.size; }
+  GetNodes() { this.#assertAlive(); this.#nodeWrappers??=this.#order.filter(t=>this.#nodes.valid(t)).map(t=>new Node(this.#nodes,t)); return this.#nodeWrappers.slice(); }
+  GetNodeCount() { this.#assertAlive(); return BigInt(this.#nodes.size); }
   DestroyNode(node) {
     const ref = token(node, this.#nodes);
     try { notifyDestruction(ref); }
     finally {
       if (this.#nodes.valid(ref)) this.#nodes.release(ref);
       this.#order = this.#order.filter(t => t !== ref);
+      this.#nodeWrappers=undefined;
     }
   }
   CreateTransform(pos = Vec3.Zero, rot = Vec3.Zero, scale = Vec3.One) {
@@ -220,15 +265,40 @@ export class Scene {
       diffuseIntensity:1,specularIntensity:1,radius:0,inner:Deg(30),outer:Deg(45),priority:0}));
   }
   DestroyLight(light) { this.#lights.release(token(light,this.#lights)); }
-  GetLights() { return this.GetNodes().filter(node => node.GetLight().IsValid()); }
+  GetLights() {
+    this.#assertAlive(); const result=[];
+    for(const ref of this.#order) if(this.#nodes.valid(ref) && this.#lights.valid(this.#nodes.get(ref).light)) result.push(new Node(this.#nodes,ref));
+    return result;
+  }
   own(resource) { this.#assertAlive(); this.#owned.push(resource); return resource; }
+  Update(dt) {
+    this.#assertAlive(); time_from_ns(dt);
+    // Populate local caches. World queries compose the current parent chain;
+    // authored animations are not part of this scene implementation.
+    for (const ref of this.#order) {
+      if(!this.#nodes.valid(ref)) continue;
+      const transform=this.#nodes.get(ref).transform;
+      if(this.#transforms.valid(transform)) localMatrix(this.#transforms.get(transform));
+    }
+  }
+  Clear() {
+    this.#assertAlive();
+    const errors = [];
+    for (const ref of [...this.#order]) { try { notifyDestruction(ref); } catch (e) { errors.push(e); } }
+    this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#lights.dispose();
+    this.#nodes = new HandlePool(); this.#transforms = new HandlePool(); this.#cameras = new HandlePool();
+    this.#objects = new HandlePool(); this.#lights = new HandlePool(); this.#order.length = 0; this.#currentCamera = undefined; this.#nodeWrappers=undefined;
+    this.environment = {ambient:Color.Black,fog_near:0,fog_far:0,fog_color:Color.Black}; this.metadata = {};
+    for (const resource of this.#owned.splice(0).reverse()) { try { resource.dispose(); } catch (e) { errors.push(e); } }
+    if (errors.length) throw new AggregateError(errors, 'Scene clearing failed');
+  }
   get stats() { return {nodes: this.#nodes.size, transforms: this.#transforms.size, cameras: this.#cameras.size, objects: this.#objects.size, lights:this.#lights.size}; }
   dispose() {
     if (this.#disposed) return;
     this.#disposed = true;
     const errors = [];
     for (const ref of [...this.#order]) { try { notifyDestruction(ref); } catch (e) { errors.push(e); } }
-    this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#lights.dispose(); this.#order.length = 0;
+    this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#lights.dispose(); this.#order.length = 0; this.#nodeWrappers=undefined;
     for (const owned of this.#owned.splice(0).reverse()) { try { owned.dispose(); } catch (e) { errors.push(e); } }
     if (errors.length) throw new AggregateError(errors, 'Scene destruction callback failed');
   }

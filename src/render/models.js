@@ -86,6 +86,36 @@ export function decodeMesh(descriptor, buffer) {
 
 export function VertexLayoutPosFloatNormUInt8() { return Object.freeze({kind: 'position-normal-unorm8'}); }
 function requireLayout(layout) { requireCondition(layout?.kind === 'position-normal-unorm8', 'UNSUPPORTED_LAYOUT', 'Model tutorial requires VertexLayoutPosFloatNormUInt8'); }
+// Same rings, seam and triangle fans as engine/create_geometry.cpp.
+export function CreateSphereModel(layout, radius, subdivisionsX, subdivisionsY) {
+  requireLayout(layout);
+  requireCondition(finite(radius) > 0, 'INVALID_MESH', 'Sphere radius must be positive');
+  integer(subdivisionsX, 1, 512, 'sphere latitude subdivisions');
+  integer(subdivisionsY, 3, 512, 'sphere longitude subdivisions');
+  const vertices = [], indices = [], f = Math.fround;
+  const vertex = (x,y,z) => {
+    const length = Math.hypot(x,y,z), index = vertices.length / 8;
+    vertices.push(x,y,z,x/length,y/length,z/length,0,0); return index;
+  };
+  const top = vertex(0,radius,0), bottom = vertex(0,-radius,0);
+  let previous;
+  for (let s=0; s<=subdivisionsX; ++s) {
+    const angle = f(f((s+1)/(subdivisionsX+2))*f(Math.PI));
+    const y = f(f(Math.cos(angle))*f(radius)), r = f(f(Math.sin(angle))*f(radius)), ring = [];
+    for (let c=0; c<=subdivisionsY; ++c) {
+      const a = f(f(c*f(2*Math.PI))/subdivisionsY);
+      ring.push(vertex(f(f(Math.cos(a))*r),y,f(f(Math.sin(a))*r)));
+      if (!c) continue;
+      const i = ring[c-1], j = ring[c];
+      if (s === 0) indices.push(top,i,j);
+      else indices.push(previous[c],previous[c-1],i,previous[c],i,j);
+      if (s === subdivisionsX) indices.push(i,bottom,j);
+    }
+    previous = ring;
+  }
+  const Index = vertices.length / 8 > 65535 ? Uint32Array : Uint16Array;
+  return new Model(new Float32Array(vertices), new Index(indices), [{material:0,firstIndex:0,indexCount:indices.length}]);
+}
 export function CreateCubeModel(layout, width, height, depth) {
   requireLayout(layout); [width, height, depth].forEach(n => requireCondition(finite(n) > 0, 'INVALID_ARGUMENT', 'Cube dimensions must be positive'));
   const x = width / 2, y = height / 2, z = depth / 2;

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HARFANG · Many Nodes</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { color-scheme:dark; font:14px system-ui,sans-serif; background:#141619; color:#e7e9eb; }
+  * { box-sizing:border-box; } body { margin:0; height:100dvh; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:16px; padding:14px 20px; border-bottom:1px solid #363b43; }
+  h1 { font-size:17px; margin:0; font-weight:600; } .tag { color:#94a3b8; }
+  .controls { margin-left:auto; display:flex; gap:8px; }
+  button { background:#272d36; border:1px solid #485260; color:inherit; border-radius:5px; padding:7px 12px; cursor:pointer; }
+  button:disabled { opacity:.45; cursor:default; } button:focus-visible,canvas:focus-visible { outline:2px solid #df9370; }
+  main { flex:1; min-height:0; position:relative; } canvas { width:100%;height:100%;display:block;outline:none; }
+  #status { position:absolute; left:18px; top:14px; margin:0; padding:6px 10px; background:#121820d9; border-radius:4px; pointer-events:none; }
+  footer { padding:9px 20px; display:flex; gap:20px; color:#aab4c1; border-top:1px solid #363b43; font-size:12px; }
+  #error { color:#ffb5a7; white-space:pre-wrap; }
+  @media(max-width:650px) { .tag {display:none;} header {gap:8px;padding:10px;} footer {gap:8px;flex-wrap:wrap;} }
+</style>
+<script type="importmap">
+{"imports":{"harfang":"./src/compat/harfang.js","harfang/browser":"./src/compat/browser.js"}}
+</script>
+<header><h1>HARFANG · Many Nodes</h1><span class="tag">10,201 moving spheres</span>
+  <div class="controls"><button id="pause" disabled>Pause</button><button id="restart" disabled>Restart</button></div>
+</header>
+<main><canvas id="canvas" aria-label="Many dynamic objects"></canvas><p id="status">Preparing assets…</p></main>
+<footer><span id="metrics">Loading</span><span>Click the scene, then Escape to stop.</span><span id="error" role="alert"></span></footer>
+<script type="module" src="./main.js"></script>
+</html>

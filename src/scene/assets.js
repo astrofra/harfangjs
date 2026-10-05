@@ -1,6 +1,6 @@
 import {ResourceManager} from '../core/resources.js';
 import {abortError, HarfangError, requireCondition} from '../core/errors.js';
-import {Scene} from './scene.js';
+import {Scene, LT_Linear, LT_Point, LT_Spot} from './scene.js';
 import {Vec3, Vec2, Color, Deg3, Deg} from '../core/math.js';
 import {decodeMesh, watchModel} from '../render/models.js';
 import {Picture, watchImage} from '../render/images.js';
@@ -115,7 +115,7 @@ export class StaticAssets extends ResourceManager {
         objects.push(component);
       }
       if (signal.aborted) throw abortError(source);
-      this.#renderer?.prepareMaterials(objects.flatMap(object => Array.from({length:object.GetMaterialCount()},(_,i) => object.GetMaterial(i))));
+      this.#renderer?.prepareMaterials(objects.flatMap(object => Array.from({length:Number(object.GetMaterialCount())},(_,i) => object.GetMaterial(i))));
       const transforms = (body.transforms ?? []).map(t => scene.CreateTransform(new Vec3(...t.pos), Deg3(...t.rot), new Vec3(...t.scl)));
       const cameras = (body.cameras ?? []).map(c => {
         const camera = c.ortho ? scene.CreateOrthographicCamera(c.zrange?.znear ?? 0.01, c.zrange?.zfar ?? 1000, c.size ?? 1) :
@@ -124,7 +124,7 @@ export class StaticAssets extends ResourceManager {
       });
       const nodes = new Map();
       const lights = lighting ? (body.lights ?? []).map(authored => {
-        const light = scene.CreateLight(); light.SetType(authored.type);
+        const light = scene.CreateLight(); light.SetType({linear:LT_Linear,point:LT_Point,spot:LT_Spot}[authored.type]);
         light.SetDiffuseColor(new Color(...authored.diffuse.map(c => c/255))); light.SetSpecularColor(new Color(...authored.specular.map(c => c/255)));
         light.SetDiffuseIntensity(authored.diffuse_intensity ?? 1); light.SetSpecularIntensity(authored.specular_intensity ?? 1);
         light.SetRadius(authored.radius ?? 0); light.SetInnerAngle(authored.inner_angle ?? Deg(30)); light.SetOuterAngle(authored.outer_angle ?? Deg(45)); light.SetPriority(authored.priority ?? 0);

@@ -1,0 +1,6 @@
+#pragma once
+static const char *default_vertex = R"HGSHADER(@DEFAULT_VERTEX@)HGSHADER";
+static const char *default_fragment = R"HGSHADER(@DEFAULT_FRAGMENT@)HGSHADER";
+static const char *depth_vertex = R"HGSHADER(@DEPTH_VERTEX@)HGSHADER";
+static const char *depth_fragment = R"HGSHADER(@DEPTH_FRAGMENT@)HGSHADER";
+static const char *approved_sources = R"HGSHADER(@APPROVED_SOURCES@)HGSHADER";

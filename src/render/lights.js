@@ -1,12 +1,13 @@
 import {requireCondition} from '../core/errors.js';
+import {LT_Linear, LT_Spot} from '../scene/scene.js';
 
 // Match PrepareForwardPipelineLights: reserve slot 0 even with no directional light.
 // Native std::sort does not specify ties; our documented tie-break is scene node order.
 export function selectLights(scene) {
   const enabled = scene.GetLights().filter(node => node.IsEnabled());
   const byPriority = (a,b) => b.GetLight().GetPriority() - a.GetLight().GetPriority();
-  const directional = enabled.filter(n => n.GetLight().GetType() === 'linear').sort(byPriority);
-  const local = enabled.filter(n => n.GetLight().GetType() !== 'linear').sort(byPriority);
+  const directional = enabled.filter(n => n.GetLight().GetType() === LT_Linear).sort(byPriority);
+  const local = enabled.filter(n => n.GetLight().GetType() !== LT_Linear).sort(byPriority);
   const selected = [directional[0],...local.slice(0,7)];
   const positions = new Float32Array(32), directions = new Float32Array(32), diffuse = new Float32Array(32), specular = new Float32Array(32);
   const names = Array(8).fill(null);
@@ -14,7 +15,7 @@ export function selectLights(scene) {
     if (!node) continue;
     const light = node.GetLight(), world = node.GetTransform().GetWorld().data;
     requireCondition(light.GetInnerAngle() <= light.GetOuterAngle(),'INVALID_LIGHT','Inner spot angle exceeds outer angle',node.GetName());
-    const i = slot * 4, radius = light.GetRadius(), spot = light.GetType() === 'spot';
+    const i = slot * 4, radius = light.GetRadius(), spot = light.GetType() === LT_Spot;
     positions.set([world[9],world[10],world[11],slot && radius ? 1/radius : 0],i);
     directions.set([world[6],world[7],world[8],spot ? Math.cos(light.GetInnerAngle()) : 0],i);
     const d = light.GetDiffuseColor(), s = light.GetSpecularColor();

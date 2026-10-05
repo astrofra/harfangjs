@@ -2,6 +2,12 @@
 
 HARFANG's **C/W0 foundations, W1 static scenes/assets, and W2 materials/forward lighting**, using JavaScript ES modules and WebGL 2. The browser runtime has no package dependencies or Wasm code.
 
+The [native Many Nodes experiment](experiments/native-scene-many-nodes/README.md)
+now runs the original `scene_many_nodes.js` unchanged: 10,201 animated spheres,
+4096 spotlight shadows, a native-compatible public API slice and a standalone
+native program compiler. Its browser window helper and asset profile are separate
+from the W2 gallery. The shared API fixture and images are compared with native HG JS.
+
 **Compatibility priority: HG Lua -> native HG JS -> web HG JS.** Native HG JS
 prioritizes conformity with HG Lua. This web implementation adapts on a
 best-effort basis to run native HG JS projects, with documented adaptations and

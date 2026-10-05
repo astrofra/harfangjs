@@ -1,0 +1,8 @@
+{
+  "core/shader/default.hps": "f77b73693725271319aa2503b13095ffaeb8ecefb4a03ad9ce503f4d569c2b84",
+  "core/shader/default_vs.sc": "08da85276a1622eadc118be26711ea926da5404be227866de36370022718b26c",
+  "core/shader/default_fs.sc": "74c8aab8b4d01670fd44dfdda0dce70b59141911df456e5642e5474a946c2128",
+  "core/shader/default_varying.def": "adf22b63b2e05fc05c810d5e21a028ad0cb5d6d6dbcf908af9bf188eef9e7f7b",
+  "core/shader/forward_pipeline.sh": "262428b05184350fc826630f95417b703094603ab47edfb3aeb03fdb04c3a638",
+  "core/shader/bgfx_shader.sh": "247315fb69f27adff76bf4cf40348cc1cb235f81e61229de49306d4787f1faac"
+}

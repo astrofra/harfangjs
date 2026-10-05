@@ -11,7 +11,7 @@ export function registerStaticTests({test, assert, equal, near, throws, rejects,
   const empty = assets => { for (const [key, count] of Object.entries(assets.stats)) assert(count === 0, `${key}: ${count} remaining`); };
   const canvas = () => { const c = document.createElement('canvas'); c.width = c.height = 256; document.body.append(c); return c; };
   function compare(scene, reference) {
-    assert(scene.GetNodeCount() === reference.nodes.length);
+    assert(scene.GetNodeCount() === BigInt(reference.nodes.length));
     equal(scene.GetCurrentCamera().GetName(), reference.currentCamera);
     for (const [i, expected] of reference.nodes.entries()) {
       const node = scene.GetNodes()[i]; assert(node.IsValid()); equal(node.GetName(), expected.name); equal(node.IsEnabled(), expected.enabled);
@@ -25,7 +25,7 @@ export function registerStaticTests({test, assert, equal, near, throws, rejects,
         near([camera.GetFov()], [expected.camera.fov]);
       }
       if (expected.materials) {
-        const object = node.GetObject(); equal(object.GetMaterialCount(), expected.materials.length);
+        const object = node.GetObject(); assert(object.GetMaterialCount() === BigInt(expected.materials.length));
         for (const [slot, mat] of expected.materials.entries()) {
           const source = object.GetMaterial(slot).source;
           equal(object.GetMaterialName(slot), expected.materialNames[slot]); equal(source.program, mat.program);
@@ -52,7 +52,7 @@ export function registerStaticTests({test, assert, equal, near, throws, rejects,
         equal(prop.GetTransform().GetParent().GetName(), 'Prop group');
         assert(scene.GetNode('Negative scale').GetTransform().GetScale().x < 0);
         assert(!scene.GetNode('Disabled prop').IsEnabled());
-        assert(object.GetMaterialCount() === 2 && object.GetModelRef().vertexCount === 24 && object.GetModelRef().indexCount === 36);
+        assert(object.GetMaterialCount() === 2n && object.GetModelRef().vertexCount === 24 && object.GetModelRef().indexCount === 36);
         equal(object.GetModelRef().submeshes.map(s => s.material), [0,1]);
         equal(object.GetModelRef().bounds, {min:[-.5,-.5,-.5],max:[.5,.5,.5]});
         equal(object.GetMaterialName(0), 'Parented prop slot 0');

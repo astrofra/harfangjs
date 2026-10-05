@@ -20,6 +20,14 @@ browser compatibility is not guaranteed for every native project. Required
 unsupported web features still fail explicitly rather than silently succeeding.
 See the [normative precedence](../../harfang3d/specifications/SPECS_HYBRID_CPP_JS_WEBGL_DELIVERY_SLICES.md#compatibility-precedence).
 
+**Public API compatibility is a hard constraint for new native/Web work.** Keep
+the native names, signatures, defaults, value/reference semantics and return
+types for the supported overloads. Browser presentation concessions do not waive
+this requirement. The [Many Nodes experiment](../experiments/native-scene-many-nodes/README.md)
+uses a separate `web-native-forward/1` import map and tests one identical API
+fixture against native HG JS. The older W1/W2 adaptations documented below are
+not a claim of complete native API compatibility.
+
 ## Source and module boundaries
 
 The asset authoring boundary is the same uncompiled source tree for every
@@ -69,6 +77,13 @@ Native `time_ns` and integer time arguments use signed 64-bit `BigInt`, includin
 ## Scene and resource ownership
 
 `Scene` supports programmatic `CreateNode(name)`, `GetNode(name)`, `GetNodes()`, `GetNodeCount()`, `DestroyNode(node)`, `CreateTransform(pos, rot, scale)`, `DestroyTransform(transform)`, and `.dispose()`. Names may repeat; lookup returns the first live match. Missing lookup returns an invalid, truthy wrapper. `Node` supports name and transform get/set; `Transform` supports position/rotation/scale get/set, `[pos,rot]` get/set, and composed `GetWorld()`.
+
+`GetNodeCount()` and `Object.GetMaterialCount()` return `BigInt`, matching native
+64-bit `size_t`; convert explicitly for JS array lengths. `Scene.Update(dt)` accepts
+native nanosecond `BigInt` values. `Scene.Clear()` invalidates old component/node
+handles and resets reusable scene state while retaining canvas settings; terminal
+`.dispose()` remains a Web lifecycle extension. Numeric light types follow native
+`LT_Point=0`, `LT_Spot=1`, `LT_Linear=2`; serialized asset names are decoded on load.
 
 W1 adds `Transform.GetParent/SetParent/ClearParent` with Node handles, cycle checks and a depth limit. Destroyed parent references become invalid and world computation uses the remaining valid chain. `Node.Enable/Disable/IsEnabled/IsItselfEnabled` reflect local state, matching native ordinary parent behavior: disabling a parent does not disable its children. Instances are excluded.
 

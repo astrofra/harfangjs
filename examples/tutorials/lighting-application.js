@@ -73,7 +73,7 @@ export function createLightingApplication(caseId = 'material_lighting') {
           stats.adaptation = 'Bounded 11×11 correctness grid, compiled shared sphere, shadows disabled; original 101×101 stress workload remains W10.';
           stats.grid = [11,11]; stats.movingObjects = 121;
         }
-        ctx.renderer.prepareMaterials(scene.GetNodes().filter(n => n.GetObject().IsValid()).flatMap(n => Array.from({length:n.GetObject().GetMaterialCount()},(_,i) => n.GetObject().GetMaterial(i))));
+        ctx.renderer.prepareMaterials(scene.GetNodes().filter(n => n.GetObject().IsValid()).flatMap(n => Array.from({length:Number(n.GetObject().GetMaterialCount())},(_,i) => n.GetObject().GetMaterial(i))));
       }
       stats.scene = scene.stats;
     },
