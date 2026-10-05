@@ -1,12 +1,49 @@
 # C / W0 / W1 / W2 implementation evidence
 
-Implemented in `harfangjs` on 2026-10-04 against HARFANG checkout `5fe83f1adabf26294003be4c6e13ea068413b5d9`. The existing native tutorials and source repository are unchanged.
+The C/W0/W1/W2 browser delivery was implemented on 2026-10-04 against HARFANG checkout `5fe83f1adabf26294003be4c6e13ea068413b5d9`, without modifying the native source at that stage. The subsequent HGJS integration below adds an external QuickJS language target to `harfang3d`. Existing Lua/Squirrel tutorials remain unchanged; three JavaScript ports are added beside them.
 
-This delivery provides the portable contract subset, executable browser foundations, W1 static scenes/assets, and W2 materials/forward lighting. **The complete shared-JS cross-host acceptance gate is still open:** the native QuickJS launcher/facade belongs to N. Native references use real C++ HARFANG, not native JavaScript. No unsupported feature or unported native tutorial is counted as passing.
+This delivery provides the portable contract subset, executable browser foundations, W1 static scenes/assets, and W2 materials/forward lighting. **The complete shared-JS cross-host acceptance gate is still open.** An initial native HGJS gate now executes shared math/scene fixtures through the external QuickJS binding; the full W1/W2 application facade remains pending. Historical W0/W1/W2 references below use C++ HARFANG. No unsupported feature or unported native tutorial is counted as passing.
+
+## Native HGJS gate (2026-10-04)
+
+Acceptance follows the [compatibility priorities](contract.md#compatibility-priorities):
+HG Lua is the native HG JS reference; web HG JS adapts to native projects on a
+best-effort basis. The web profile and its incomplete compatibility gates do
+not limit native functionality or replace native conformity checks.
+
+The official `HarfangJs` target adds QuickJS 2026-06-04 to the language layer,
+using MSVC 19.41 for the engine/bindings and Zig 0.14.1 for the static C core.
+The engine's Lua binding, scene systems and tests are unchanged. Lua and JS
+language targets configure together; the launcher links Lua's runtime DLL.
+
+The native API comparison checks **2,783 Lua/Squirrel reference entries** against
+the QuickJS declarations and the installed executable's exports, with Bullet
+and Recast enabled: no missing names. The CLI suite also verifies Lua
+`Pack/Unpack`, native value copies and reference lifetimes, Bullet gravity,
+execution beyond the old five-second limit, allocation beyond the old 256 MiB
+cap and resource mounting exclusively from JavaScript. This API surface check
+does not establish behavioral parity for every overload or subsystem.
+
+`tools/validate_native_js.py --native-render` checks **19 shared contract groups**,
+three launcher runs with four Lua scene VMs each, six negative entry/module
+cases and two window checks. Shared fixtures compare native and browser math,
+BigInt boundaries, named nodes and get/change/set copies. The native Lua
+component test proves that JavaScript can still drive the existing scene systems.
+Three actual tutorial ports run: `draw_lines`, `draw_model_no_pipeline` and
+`filesystem_assets`. Since 2026-10-05 they run with both native-default and
+explicit OpenGL renderers, using separately compiled assets. Native JS also renders the room, lighting gallery and
+ambient PBR fixture; these captures are separate from historical C++/web image
+comparisons.
+
+The isolated `hg_quickjs_tests` covers eight runtime lifetimes, modules, closures,
+BigInt and Promise completion. Original `script.lua_vm`, `engine.scene` and
+`engine.scene_animation` tests pass with the same engine. See
+[native integration](native-quickjs.md) for commands and remaining differences;
+this does not mark the full portable C or N gates complete.
 
 ## Recorded validation
 
-`python tools/validate.py --native-render` builds `dist/web`, checks the offline writer, runs the browser suite at `/tests/`, drives real DOM input/lifecycle actions and compares five native renders. The recorded run passed **66 browser cases**, including 20 tutorial cases, **ten compiler cases**, and all browser integration checks. It used Chrome 154.0.8037.97 with WebGL 2 through ANGLE SwiftShader, plus native C++ HARFANG with bgfx OpenGL. Browser hardware GPUs, Firefox/WebKit/mobile and native QuickJS remain unvalidated.
+`python tools/validate.py --native-render` builds `dist/web`, checks the offline writer, runs the browser suite at `/tests/`, drives real DOM input/lifecycle actions and compares five native renders. The recorded run passed **66 browser cases**, including 20 tutorial cases, **ten compiler cases**, and all browser integration checks. It used Chrome 154.0.8037.97 with WebGL 2 through ANGLE SwiftShader, plus native C++ HARFANG with bgfx OpenGL. Browser hardware GPUs and Firefox/WebKit/mobile remain unvalidated. The HGJS gate above runs separately from this historical C++/browser comparison.
 
 The machine-readable result is generated at `build/reports/validation.json`; fixed-time captures are beside it. Generated reports/builds are ignored by git. The checked-in tutorial manifest is deliberately execution-neutral and retains native/browser statuses independently; each run's report is authoritative for that run.
 

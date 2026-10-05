@@ -2,6 +2,12 @@
 
 HARFANG's **C/W0 foundations, W1 static scenes/assets, and W2 materials/forward lighting**, using JavaScript ES modules and WebGL 2. The browser runtime has no package dependencies or Wasm code.
 
+**Compatibility priority: HG Lua -> native HG JS -> web HG JS.** Native HG JS
+prioritizes conformity with HG Lua. This web implementation adapts on a
+best-effort basis to run native HG JS projects, with documented adaptations and
+limitations. Browser restrictions do not constrain native functionality. See the
+[compatibility policy](docs/contract.md#compatibility-priorities).
+
 W1 adds native JSON scene loading, hierarchy, perspective/orthographic cameras, indexed meshes and material slots, unlit PNG/JPEG materials, fixed cube/plane drawing, and an offline web asset writer. The room includes two cameras, a parented prop, negative scale, UV seams, and a disabled object. Existing line, input, lifecycle, and JS behavior examples remain available.
 
 W2 adds the historical Phong and HARFANG PBR material families, normal/ORM/emissive maps, alpha cut, blending, eight prioritized light slots, and fog. The default gallery has interactive lighting and material controls. Environment lighting uses an explicitly declared ambient approximation; shadows remain W3.
@@ -34,4 +40,4 @@ The selector includes **`scene_pbr.materials`**, `material_update_value.no_shado
 
 Details: [acceptance evidence](docs/acceptance.md), [portable contract](docs/contract.md), [asset format and tooling](docs/static-assets.md), [binding inventory](contract/binding-inventory.json), and [56-family tutorial manifest](contract/tutorials.json).
 
-**Native QuickJS execution remains slice N.** The same JS application has not yet run on a native JS facade; current native references use C++ HARFANG. Shadows, environment probes, scene instances, animation, skinning, audio, and portable UI remain deferred. Required unsupported features fail explicitly.
+**Native HarfangJs has an executable compatibility gate.** Its external QuickJS binding uses the existing engine with Lua scene systems. Three native tutorials are ported from Lua/Squirrel: animated lines, models without a scene pipeline, and texture loading. Shared math/scene fixtures run through C++ bindings and the browser. See [native QuickJS integration](docs/native-quickjs.md) for commands and limits. The complete W1/W2 portable application facade remains pending. Shadows, environment probes, scene instances, animation, skinning, audio, and portable UI remain deferred in the web profile.

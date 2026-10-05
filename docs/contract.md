@@ -1,7 +1,24 @@
 # Portable foundation, scene and forward-rendering contract
 
 API `harfang-js/1`, profile `web-forward/1`, asset schema `harfang-web-assets/1`. Earlier `web-foundation/1` and `web-static/1` manifests remain accepted.
-This is the C contract subset exercised by W0/W1/W2. It does not advertise the future `web-lite/1` profile. Native facade enforcement and native JS execution remain N integration work.
+This is the C contract subset exercised by W0/W1/W2. It does not advertise the future `web-lite/1` profile. The [HarfangJs gate](native-quickjs.md) executes shared math/scene fixtures through an external QuickJS binding; remaining cross-host adapters are portability work and do not define the default native API.
+
+## Compatibility priorities
+
+1. **Native HG JS prioritizes conformity with HG Lua**, including functionality
+   and engine behavior for the same build options, with JavaScript language
+   conventions where necessary.
+2. **Web HG JS adapts on a best-effort basis to run native HG JS projects.**
+   Preserve native project code and behavior where feasible, and document the
+   adapters, approximations, required project changes and unsupported features.
+
+The direction is **HG Lua -> native HG JS -> web HG JS**. The web profile below
+describes current browser capabilities; its limits do not restrict native APIs,
+resource handling or execution. Optional portability checks must be explicitly
+selected. Native conformity and web compatibility are validated separately;
+browser compatibility is not guaranteed for every native project. Required
+unsupported web features still fail explicitly rather than silently succeeding.
+See the [normative precedence](../../harfang3d/specifications/SPECS_HYBRID_CPP_JS_WEBGL_DELIVERY_SLICES.md#compatibility-precedence).
 
 ## Source and module boundaries
 
@@ -11,7 +28,7 @@ The source specs are in the sibling `harfang3d/specifications/` directory:
 - `SPECS_HYBRID_CPP_JS_WEBGL_FEASIBILITY.md`, especially value semantics, scheduling and projection conventions.
 - `SPECS_HYBRID_CPP_JS_WEBGL_TUTORIAL_VALIDATION.md`.
 
-Shared applications import `harfang`. Browser bootstrap additionally imports `harfang/browser`; it is the only module needing a DOM at initialization. Source and packaged HTML provide relative import maps. `package.json` provides matching ES-module exports for tooling. The future native loader must map `harfang` to its matching facade. `harfang-native` and `harfang/native` are forbidden in the portable profile; `validatePortableModule(specifier, source)` reports those imports, and the package builder rejects unrecognized bare imports. This is dependency validation, not a sandbox for arbitrary JS code.
+Shared applications import `harfang`. Browser bootstrap additionally imports `harfang/browser`; it is the only module needing a DOM at initialization. Source and packaged HTML provide relative import maps. `package.json` provides matching ES-module exports for tooling. The native loader maps `harfang` to the full generated engine binding; web compatibility adapters must work from that reference. `harfang-native` and `harfang/native` are forbidden in the web portable profile; `validatePortableModule(specifier, source)` reports those imports, and the web package builder rejects unrecognized bare imports. This is dependency validation, not a sandbox for arbitrary JS code.
 
 Behavior modules come from a registry of logical IDs and static `import()` functions. No downloaded source evaluation, runtime module-name guessing, QuickJS bytecode, or executable asset payload is supported.
 
@@ -75,19 +92,19 @@ The desktop example explicitly calls init/update/ui/render/dispose inside `main.
 
 `ctx.input.keyboard` and `.mouse` are immutable frame snapshots. `Down/Key/Button`, `Pressed`, `Released` use the same snapshot throughout a frame. Repeat keydown does not create repeated presses. A complete press/release between frames reports both transitions. Old snapshots remain unchanged.
 
-Keyboard identifiers use DOM physical `KeyboardEvent.code` strings, including exported `K_Escape`, `K_Space` and arrow constants; a native adapter must translate these. Input is scoped to the focused canvas. Mouse `MB_0/1/2` mean left/right/middle, with `X/Y`, `DtX/DtY` in drawing-buffer pixels, positive Y upward. `Wheel()` sums signed steps, positive upward. Browser wheel deltas are normalized, not raw native device counts. Touch/gamepad/text composition and native raw device enumeration are not advertised.
+Keyboard identifiers use DOM physical `KeyboardEvent.code` strings, including exported `K_Escape`, `K_Space` and arrow constants; these differ from native key enums. Web adaptation to native input calls remains compatibility work. Input is scoped to the focused canvas. Mouse `MB_0/1/2` mean left/right/middle, with `X/Y`, `DtX/DtY` in drawing-buffer pixels, positive Y upward. `Wheel()` sums signed steps, positive upward. Browser wheel deltas are normalized, not raw native device counts. Touch/gamepad/text composition and native raw device enumeration are not advertised.
 
 `ScriptManager(registry).attach(id, target, parameters, {signal?})` resolves a registered module, invokes synchronous `createBehavior()`, assigns parameters in insertion order with `OnSetScriptValue(name)`, then calls `OnAttach(target)`. A fresh object is required for each component. Factories own their mutable state; plain JS object parameters and values retain normal reference semantics, so applications should provide separate mutable parameter objects when needed. Lifecycle names cannot be overwritten through parameter setters.
 
 `update(dtNs)` calls `OnUpdate(target, dtNs)` in successful attachment order; attachment completion order is explicit (await sequentially when order matters). Iteration uses a snapshot, so self/other detachment is safe. `detach(handle)` invalidates the script handle and calls `OnDetach(target)` then `OnDestroy()`. Scene/node destruction triggers detachment before invalidation. Manager disposal detaches remaining components in reverse order, cancels pending module resolution and continues cleanup after exceptions. A cancelled late import cannot instantiate/attach a behavior.
 
-`getValue/setValue/call` provide the communication demonstrated by `scene_lua_script.js`. Calls receive ordinary values/handles, preserve a returned array as one value, and fail on missing functions. Native Lua lifecycle names (`OnAttachToNode`/`OnAttachToScene`) are deliberately adapted to one JS `OnAttach(target)` entry; native N must implement this contract.
+`getValue/setValue/call` provide the communication demonstrated by the web `scene_lua_script.js` derivative. Calls receive ordinary values/handles, preserve a returned array as one value, and fail on missing functions. This web API adapts native Lua lifecycle names (`OnAttachToNode`/`OnAttachToScene`) to one JS `OnAttach(target)` entry. It does not change native HG JS scene systems: the native binding preserves HG Lua behavior, and any cross-host adapter is optional.
 
 ## Rendering and capability limits
 
 W0 maps `shaders/white` and `shaders/pos_rgb` to reviewed GLSL ES 3.00 adapters derived from the tutorial shaders. No native `.bin` is loaded and no shader is transpiled at runtime. `ctx.renderer.createLineProgram(id)` returns an explicitly disposable generation-checked program. Arbitrary program paths fail.
 
-`VertexLayout.Begin/Add/End` accepts only `A_Position,3,AT_Float` and optional `A_Color0,3,AT_Float`, in that order. These portable attribute tokens are strings; the future native facade must map them to bgfx enums. `Vertices(layout,count)` holds up to 131,072 vertices; `Clear/Begin/SetPos/SetColor0/End` fill consecutive complete pairs. Sparse/incomplete/mismatched layouts fail. `ctx.renderer.beginFrame(Color)` clears the full viewport; `drawLines(vertices, program, Mat44.Identity)` uploads one dynamic buffer and submits one draw. Depth test/write are enabled, blending/culling disabled, and lines are one pixel wide. Driver-chosen antialiasing is an explicit approximation. `renderer.stats` reports draw calls, submitted vertices, live programs and GPU buffer bytes.
+`VertexLayout.Begin/Add/End` accepts only `A_Position,3,AT_Float` and optional `A_Color0,3,AT_Float`, in that order. These current web attribute tokens are strings and differ from native bgfx enums; accepting the native conventions remains web compatibility work. `Vertices(layout,count)` holds up to 131,072 vertices; `Clear/Begin/SetPos/SetColor0/End` fill consecutive complete pairs. Sparse/incomplete/mismatched layouts fail. `ctx.renderer.beginFrame(Color)` clears the full viewport; `drawLines(vertices, program, Mat44.Identity)` uploads one dynamic buffer and submits one draw. Depth test/write are enabled, blending/culling disabled, and lines are one pixel wide. Driver-chosen antialiasing is an explicit approximation. `renderer.stats` reports draw calls, submitted vertices, live programs and GPU buffer bytes.
 
 `StaticRenderer` extends the line renderer, and is the browser context's default renderer. `CreateCubeModel(layout,w,h,d)` and `CreatePlaneModel(layout,w,d,1,1)` accept `VertexLayoutPosFloatNormUInt8()`, preserving the native primitive positions/normals/UVs and winding. `Model` holds copied, validated fixed position/normal/UV buffers, triangle indices, submeshes and local bounds; replacement/general ModelBuilder is deferred. `drawModel(model, program, Mat4, Mat44, materials?)` implements reviewed `shaders/mdl` and `shaders/unlit.hps` adapters. `submit(scene)` clears from the scene canvas and draws enabled object nodes using its enabled current camera. There is no visibility/frustum-culling optimization yet.
 
