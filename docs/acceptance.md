@@ -91,7 +91,14 @@ The browser renders the same room as the native C++ forward pipeline using the f
 
 Compiler checks cover deterministic output, payload hashes, seam-preserving buffers/native winding, missing dependencies/material slots, output-directory protection, unsupported features, native compiled geometry rejection, and binary conversion. Browser checks add malformed indices/bounds/truncation, missing/corrupt images, integrity failure, transactional cancellation, unsupported features, texture orientation, and repeated scene disposal. Runtime network requests remain within the packaged modules, test fixtures and `assets-web`; source/native asset directories are never requested.
 
-The W1/W2 web asset package has 55 entries totaling 12,710,280 logical payload bytes, mostly the original PBR tutorial images. Structural rendering does not decode/sample those PBR images; the separate W2 material case does. Native/web asset tooling, ownership and limitations are detailed in [static assets](static-assets.md). The offline writer is a prototype frontend using native readers, not an upstream `assetc --target web` integration.
+The W1/W2 web asset package has 55 entries totaling 12,710,280 logical payload bytes, mostly the original PBR tutorial images. Structural rendering does not decode/sample those PBR images; the separate W2 material case does. Native/web asset tooling, ownership and limitations are detailed in [static assets](static-assets.md). The offline writer is a Python prototype using native readers, not the required standalone native Web compiler.
+
+The [Web compiler product gates](../../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md)
+remain open: an assetc-compatible CLI, a self-contained native distribution,
+execution on Windows/macOS/Linux on both x86-64 and ARM64, and actual offline HDR
+probe generation and browser sampling. Existing results establish none of those
+release claims. The common input is the same uncompiled source tree; native
+Lua/Python/JS share native compiled assets, while Web gets its own compiled output.
 
 ## W2 results
 

@@ -22,6 +22,16 @@ See the [normative precedence](../../harfang3d/specifications/SPECS_HYBRID_CPP_J
 
 ## Source and module boundaries
 
+The asset authoring boundary is the same uncompiled source tree for every
+destination. HG JS native consumes the same native compiled asset types as HG
+Lua/Python; only the Web runtime needs Web compiled outputs. The required
+[standalone native Web compiler](../../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md)
+runs on Windows/macOS/Linux, x86-64 and ARM64, is implemented in
+`harfangjs/tools/native/`, and has an assetc-compatible CLI and a
+fixed WebGL 2 target. Scenes, models, textures and HDR probe generation are part
+of its delivery scope. This compiler product is pending; the implemented W1/W2
+runtime and prototype writer below do not yet provide the HDR environment path.
+
 The source specs are in the sibling `harfang3d/specifications/` directory:
 
 - `SPECS_HYBRID_CPP_JS_WEBGL_DELIVERY_SLICES.md`, sections C, W0, W1 and W2.

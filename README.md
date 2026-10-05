@@ -8,11 +8,19 @@ best-effort basis to run native HG JS projects, with documented adaptations and
 limitations. Browser restrictions do not constrain native functionality. See the
 [compatibility policy](docs/contract.md#compatibility-priorities).
 
+**Asset compiler roadmap:** the common input for all destinations is the same
+uncompiled asset tree. Existing native `assetc` produces the compiled assets shared
+by HG Lua, Python and HG JS native. HG JS Web requires a separate, standalone
+native desktop compiler in `tools/native/` for scenes, models, textures and HDR
+probes, distributed for Windows/macOS/Linux on x86-64 and ARM64. Its CLI follows `assetc`, with fewer
+options and a fixed WebGL 2 target (no graphics-backend selection). This product
+is still pending; see the [compiler specification](../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md).
+
 W1 adds native JSON scene loading, hierarchy, perspective/orthographic cameras, indexed meshes and material slots, unlit PNG/JPEG materials, fixed cube/plane drawing, and an offline web asset writer. The room includes two cameras, a parented prop, negative scale, UV seams, and a disabled object. Existing line, input, lifecycle, and JS behavior examples remain available.
 
 W2 adds the historical Phong and HARFANG PBR material families, normal/ORM/emissive maps, alpha cut, blending, eight prioritized light slots, and fog. The default gallery has interactive lighting and material controls. Environment lighting uses an explicitly declared ambient approximation; shadows remain W3.
 
-Build and run from this directory with Python 3.10 or later:
+Build and run the current prototype from this directory with Python 3.10 or later:
 
 ```powershell
 python tools/build_native.py
@@ -22,7 +30,7 @@ python tools/serve.py --dist
 
 Open **http://127.0.0.1:8000/examples/tutorials/**. In the gallery, click the canvas: **Space** cycles the light rig, **F** toggles fog, **N** toggles the normal map, and **R** changes roughness. **Escape** stops the application. The room retains its Space camera switch. The page includes pause/resume, restart, live counters, and conformance tests.
 
-The offline build needs a native HARFANG build and `assetc`; the resulting `dist/web/` needs only an HTTP(S) server. Defaults match this workspace: `../harfang3d`, `../build/python-cmake`, and `../install/assetc/assetc.exe`. `build_native.py --harfang-build PATH` links the bridge against an existing MSVC Release x64 build without changing it. Other platforms can add `tools/native` to a HARFANG CMake build containing the `engine` target. See [the W1 asset workflow](docs/static-assets.md) for custom paths and standalone compilation.
+The prototype offline build needs a native HARFANG build and `assetc`; the resulting `dist/web/` needs only an HTTP(S) server. Defaults match this workspace: `../harfang3d`, `../build/python-cmake`, and `../install/assetc/assetc.exe`. `build_native.py --harfang-build PATH` links the bridge against an existing MSVC Release x64 build without changing it. Other platforms can add `tools/native` to a HARFANG CMake build containing the `engine` target. These development requirements do not define the final standalone compiler package. See [the W1 asset workflow](docs/static-assets.md) for current prototype commands and custom paths.
 
 For source development, run `python tools/build_assets.py` followed by `python tools/serve.py`. The server maps `/assets-web/` to generated compiled assets. Editable fixture recipes, generated native inputs, native/web compiled assets, and the HTTP release remain separate.
 

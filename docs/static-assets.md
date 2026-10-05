@@ -1,6 +1,35 @@
 # W1 static assets and W2 forward extensions
 
-The prototype writer is `tools/assetc_web.py`. It follows the feasibility study's temporary helper allowance: native binary scenes and source geometry are read by a C++ bridge linked to HARFANG, while Python validates the W1/W2 subset and writes web payloads. Native `assetc` itself is unchanged. Consolidating this writer into the shared compiler remains future work. [Forward materials](forward-materials.md) describes W2 tangent frames, material maps and explicit lighting adaptations.
+The prototype writer is `tools/assetc_web.py`. Native binary scenes and source geometry are read by a C++ bridge linked to HARFANG, while Python validates the W1/W2 subset and writes web payloads. Native `assetc` itself is unchanged. This is temporary development tooling; delivering the standalone native Web compiler described below remains future work. [Forward materials](forward-materials.md) describes W2 tangent frames, material maps and explicit lighting adaptations.
+
+## Required compiler product
+
+The [standalone Web assetc specification](../../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md)
+is the authoritative delivery contract:
+
+- The same **uncompiled** scenes, source models, textures, HDR environments and
+  metadata feed both compilers. A Web build does not require separately authored
+  assets or native compiled assets as an intermediate step.
+- Existing native `assetc` output is shared by HG Lua, Python, HG JS native and
+  other native bindings. The Web compiler produces separate Web runtime assets.
+- Deliver an independent native desktop executable/package for Windows, macOS
+  and Linux, each on x86-64 and ARM64. End users must not need Python, Node.js, a
+  HARFANG checkout/build, or a separately installed native reader bridge.
+- Keep the compiler sources and CMake target in **`harfangjs/tools/native/`**.
+  This repository owns its separate compilation pipeline and release lifecycle;
+  Web/native logic may diverge, and no merger into native `assetc` is scheduled.
+- Preserve `assetc [options] input [output]` syntax and retained switch aliases.
+  The Web executable's working name is `assetc-web`. WebGL 2 is fixed initially;
+  `-api` and native `-platform` selection are absent, and unsupported options fail.
+- Compile all four content families: scenes, models, textures and HDR probes.
+  Probe irradiance/radiance preprocessing happens offline, with explicit HDR
+  encoding, orientation and roughness mip metadata for browser sampling.
+
+The Python CLI below is the current prototype interface, not the final CLI.
+Its `--scene`/`--bridge` workflow, ambient-only environment adaptation and MSVC
+x64 bridge build do not satisfy the standalone, six-host or HDR-probe gates.
+Native reader/encoder code can be shared internally without making the delivered
+Web executable depend on a separate native runtime installation.
 
 ## Build paths
 
@@ -24,7 +53,7 @@ python tools/build_assets.py --harfang ../harfang3d --bridge build/native/Releas
 python tools/build.py --assets build/assets-web
 ```
 
-Compile another supported scene independently:
+Compile another supported scene with the current prototype:
 
 ```powershell
 python tools/assetc_web.py path/to/source path/to/assets-web --scene scenes/example.scn --bridge build/native/Release/harfang_web_asset_bridge.exe
