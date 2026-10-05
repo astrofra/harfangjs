@@ -85,8 +85,9 @@ to WebGL 2. Unsupported switches and content are errors.
 
 This is the **program compiler slice**, not the complete Web assetc product.
 It verifies the reviewed default shader and its includes against normalized
-source hashes, then emits versioned forward/depth GLSL ES descriptors and a
-content-addressed manifest. Modified source requires a reviewed adapter update;
+source hashes, then emits versioned forward/depth GLSL ES descriptors at the
+original path `core/shader/default.hps`, with hashes in `manifest.json`.
+Modified source requires a reviewed adapter update;
 it is not an arbitrary `.sc` translator. Native and Web compilers consume the same
 six source files. No hand-authored alternative asset tree is required.
 
@@ -94,7 +95,10 @@ The browser verifies payload size/hash before application creation and links the
 GPU programs when the native-compatible load call executes. Application-level loads
 remain synchronous after the preload boundary. Compiler output directories must
 be marked and disjoint from input; validation failures preserve the previous
-manifest. Old immutable objects are retained for open clients.
+files and manifest. Successful compilation replaces the complete generated asset
+tree, removing obsolete output. The release retains the same source filenames;
+there is no hashed `objects/` directory. Browser preloading bypasses the HTTP
+cache so restarting after a rebuild loads the new bytes at the same paths.
 
 Scenes, mesh files, textures, mipmaps, HDR probes and the Windows/macOS/Linux
 x86-64/ARM64 distribution matrix remain work under the

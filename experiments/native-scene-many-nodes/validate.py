@@ -46,10 +46,11 @@ def compiler_checks():
         run(source, output, '-j', '2', '-q')
         manifest = json.loads((output / 'manifest.json').read_text())
         asset = manifest['assets']['core/shader/default.hps']; payload = output / asset['uri']
+        assert asset['uri']=='core/shader/default.hps' and not (output/'objects').exists()
         assert asset['sha256'] == digest(payload) and asset['byteLength'] == payload.stat().st_size
         program = json.loads(payload.read_text())
         assert program['sourceHashes'] == {p.relative_to(source).as_posix(): digest(p) for p in source.rglob('*') if p.is_file()}
-        checks += ['spaces/unicode paths', 'SHA256 and size verified independently', 'source dependency provenance']
+        checks += ['spaces/unicode paths', 'SHA256 and size verified independently', 'source dependency provenance', 'original asset path and filename preserved']
         before = (output / 'manifest.json').read_bytes()
         run('-v', source, output); assert before == (output / 'manifest.json').read_bytes()
         checks.append('deterministic repeat build')
@@ -70,8 +71,11 @@ def compiler_checks():
         run(source, unrelated, ok=False); assert (unrelated / 'keep.txt').read_text() == 'keep'
         checks.append('unmarked output protected')
         compiled = payload.read_bytes(); payload.write_bytes(b'corrupt')
-        run(source, output, ok=False); assert before == (output / 'manifest.json').read_bytes()
-        payload.write_bytes(compiled); checks.append('corrupt cached object rejected')
+        run(source, output); assert before == (output / 'manifest.json').read_bytes() and payload.read_bytes()==compiled
+        checks.append('rebuild repairs corrupt compiled payload')
+        obsolete=output/'objects'/('0'*64+'.program.json');obsolete.parent.mkdir();obsolete.write_bytes(b'old generated payload')
+        run(source,output);assert not obsolete.parent.exists() and payload.read_bytes()==compiled
+        checks.append('legacy hashed output removed on rebuild')
         run(source); assert Path(str(source) + '_compiled/manifest.json').is_file()
         checks.append('default output directory')
     return checks
@@ -180,9 +184,13 @@ def main():
     if args.native:
         report['native'] = native_reference(args.native.resolve(), args.native_assetc.resolve())
     release = json.loads((DIST / 'release.json').read_text())
+    asset_manifest=json.loads((DIST/'resources_compiled/manifest.json').read_text())
+    compiled_paths={'resources_compiled/'+entry['uri'] for entry in asset_manifest['assets'].values()}
     for name, expected in release['files'].items():
         assert digest(DIST / name) == expected, name
-        assert Path(name).suffix not in ('.wasm', '.exe', '.dll', '.py', '.sc', '.sh', '.hps'), name
+        assert Path(name).suffix not in ('.wasm', '.exe', '.dll', '.py', '.sc', '.sh'), name
+        if Path(name).suffix=='.hps':
+            assert name in compiled_paths and json.loads((DIST/name).read_text())['schema']=='harfang-web-program/1',name
     from playwright.sync_api import sync_playwright
     httpd = ThreadingHTTPServer(('127.0.0.1', 0), partial(QuietHandler, directory=str(DIST)))
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
@@ -280,11 +288,12 @@ def main():
             assert not errors, errors
             report['integration'] = ['partial shader startup failure cleanup', 'independent material copies and rebatching', 'GPU/device shadow limit rejection', 'resize', 'pause/resume', 'restart x3', 'Escape/cleanup', 'stop while paused']
             # Reject a broken compiler payload before creating any GPU resources.
-            page.route('**/*.program.json', lambda route: route.fulfill(body='{}', content_type='application/json'))
+            program_route='**/resources_compiled/'+asset_manifest['assets']['core/shader/default.hps']['uri']
+            page.route(program_route, lambda route: route.fulfill(body='{}', content_type='application/json'))
             page.goto(origin); page.wait_for_function("window.manyNodes?.state==='failed'")
             assert 'Corrupt program' in page.evaluate('window.manyNodes.error')
             assert not page.evaluate('Boolean(window.manyNodes.host)')
-            page.unroute('**/*.program.json'); errors.clear()
+            page.unroute(program_route); errors.clear()
             report['integration'].append('corrupt asset fails before application creation')
             page.goto(origin); page.wait_for_function('window.manyNodes?.host?.frames>=3')
             page.evaluate("window.manyNodes.host.renderer.gl.getExtension('WEBGL_lose_context').loseContext()")
@@ -294,7 +303,8 @@ def main():
             assert all('context lost' in e.lower() for e in errors), errors
             report['integration'].append('context loss stops and releases resources')
             assert all(url.startswith(origin + '/') for url in requests), requests
-            assert not any(re.search(r'\.(wasm|sc|sh|hps|exe|py)(\?|$)', url) for url in requests)
+            assert not any(re.search(r'\.(wasm|sc|sh|exe|py)(\?|$)', url) for url in requests)
+            assert all(url in {origin+'/'+name for name in compiled_paths} for url in requests if url.endswith('.hps'))
             report['network'] = {'localRequestsOnly': True, 'wasmForbidden': True, 'compiledProgramsOnly': True}
             browser.close()
     finally:

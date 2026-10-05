@@ -35,6 +35,35 @@ static bool contains(const fs::path &parent,const fs::path &child) {
   return true;
 }
 #include "scene_assets.h"
+static void publish(const fs::path &output,const AssetOutputs &compiled,const json &manifest) {
+  const auto parent=output.parent_path();
+  const auto staging=parent/fs::u8path(output.filename().u8string()+".building");
+  const auto backup=parent/fs::u8path(output.filename().u8string()+".previous");
+  const auto marker=fs::path(".assetc-web-program-output");
+  // These directories are compiler-owned. Verify exact resolved sibling paths
+  // and reject links before renaming or recursively removing an output tree.
+  const auto owned=[&](const fs::path &path) {
+    check((path==output||path==staging||path==backup)&&fs::weakly_canonical(path)==path&&path.parent_path()==parent,"Unsafe compiler output path");
+    check(fs::is_regular_file(path/marker),"Refusing unmarked output: "+path.u8string());
+    for(const auto &entry:fs::recursive_directory_iterator(path))check(!entry.is_symlink(),"Links are unsupported in compiler outputs");
+  };
+  if(fs::exists(output))owned(output);
+  check(!fs::exists(staging)&&!fs::exists(backup),"Interrupted publication needs recovery: "+staging.u8string()+" or "+backup.u8string());
+  bool saved=false;
+  try {
+    fs::create_directories(staging);write(staging/marker,"assetc-web/program-1\n");
+    for(const auto &payload:compiled.objects)write(staging/fs::u8path(payload.first),payload.second);
+    write(staging/"manifest.json",manifest.dump(2)+"\n");
+    owned(staging);
+    if(fs::exists(output)){owned(output);fs::rename(output,backup);saved=true;}
+    try {fs::rename(staging,output);}
+    catch(...){if(saved){owned(backup);fs::rename(backup,output);}throw;}
+  } catch(...) {
+    if(fs::exists(staging)&&fs::is_regular_file(staging/marker)){owned(staging);fs::remove_all(staging);}
+    throw;
+  }
+  if(saved){owned(backup);fs::remove_all(backup);}
+}
 static int run(const std::vector<std::string> &args) {
   bool quiet=false,verbose=false,progress=false;
   std::vector<fs::path> paths;
@@ -61,6 +90,10 @@ static int run(const std::vector<std::string> &args) {
   const auto output=fs::weakly_canonical(fs::absolute(paths.size()==2 ? paths[1] : fs::u8path(paths[0].u8string()+"_compiled")));
   check(fs::is_directory(source),"Input is not a directory");
   check(!contains(source,output) && !contains(output,source),"Source and output must be disjoint");
+  for(const auto &suffix:{".building",".previous"}) {
+    const auto sibling=fs::weakly_canonical(fs::u8path(output.u8string()+suffix));
+    check(!contains(source,sibling)&&!contains(sibling,source),"Publication directories must be disjoint from source");
+  }
   auto approved=json::parse(approved_sources);
   const bool scene_profile=fs::exists(source/"core/shader/pbr.hps");
   if(scene_profile) {const auto extra=json::parse(scene_approved_sources);for(auto it=extra.begin();it!=extra.end();++it)approved[it.key()]=it.value();}
@@ -89,7 +122,7 @@ static int run(const std::vector<std::string> &args) {
     {"requires",{"render.forward","render.spot-shadow","render.draw-instancing"}},
     {"forward",{{"vertex",default_vertex},{"fragment",default_fragment}}},
     {"depth",{{"vertex",depth_vertex},{"fragment",depth_fragment}}}};
-  auto bytes=program.dump(2)+"\n", digest=sha256(bytes), uri="objects/"+digest+".program.json";
+  auto bytes=program.dump(2)+"\n", digest=sha256(bytes);
   compiled.add("core/shader/default.hps","program",bytes);
   if(scene_profile) {
     json pbr={{"schema","harfang-web-program/1"},{"adapter","pbr-scene-instanced/1"},{"logicalId","core/shader/pbr.hps"},{"sourceHashes",source_hashes},
@@ -112,30 +145,12 @@ static int run(const std::vector<std::string> &args) {
   }
   json manifest={{"schema","harfang-web-program-assets/1"},{"api","harfang-js/1"},
     {"profile","web-native-forward/1"},{"compiler","assetc-web/program-1"},
-    {"buildId",digest},{"maxNodes",16384},
-    {"assets",{{"core/shader/default.hps",{{"kind","program"},{"uri",uri},{"sha256",digest},
-      {"byteLength",bytes.size()},{"dependencies",json::array()}}}}}};
+    {"buildId",digest},{"maxNodes",16384}};
   manifest["assets"]=compiled.assets;manifest["sourceHashes"]=source_hashes;
   if(scene_profile){manifest["profile"]="web-native-scene/1";manifest["compiler"]="assetc-web/scene-1";manifest["buildId"]=sha256(compiled.assets.dump());}
-  // All inputs validated before any output mutation. Immutable content is written
-  // first; the manifest is the commit point. Retain old objects for open clients.
-  if(fs::exists(output)) check(fs::is_regular_file(output/".assetc-web-program-output"),"Refusing unmarked output: "+output.u8string());
-  fs::create_directories(output);
-  write(output/".assetc-web-program-output","assetc-web/program-1\n");
-  for(const auto &payload:compiled.objects) {
-    const auto object=output/fs::u8path(payload.first);
-    if(fs::exists(object)) check(read(object)==payload.second,"Corrupt existing output object: "+object.u8string());
-    else write(object,payload.second);
-  }
-  write(output/"manifest.json.tmp",manifest.dump(2)+"\n");
-  // Windows rename cannot replace a destination; restore the previous manifest
-  // on publication failure. No recursive deletion or source writes.
-  const auto current=output/"manifest.json", backup=output/"manifest.json.previous";
-  check(!fs::exists(backup),"Previous interrupted publication needs recovery: "+backup.u8string());
-  if(fs::exists(current)) fs::rename(current,backup);
-  try { fs::rename(output/"manifest.json.tmp",current); }
-  catch(...) { if(fs::exists(backup)) fs::rename(backup,current); throw; }
-  if(fs::exists(backup)) fs::remove(backup);
+  // Validate/compile everything first, then replace the complete owned output.
+  // Stable filenames can change bytes, and obsolete hashed files disappear.
+  publish(output,compiled,manifest);
   if(!quiet) std::cout<<"Compiled "<<compiled.assets.size()<<" assets, "<<source_hashes.size()<<" source files -> "<<output.u8string()<<"\n";
   if(verbose && !quiet) std::cout<<"SHA256 "<<digest<<"\n";
   if(progress && !quiet) std::cout<<"100%\n";

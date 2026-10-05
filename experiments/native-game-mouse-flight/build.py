@@ -12,6 +12,8 @@ ROOT = EXPERIMENT.parents[1]
 NATIVE = ROOT.parent / 'harfang3d'
 WORK = ROOT / 'build/experiments/native-game-mouse-flight'
 DIST = ROOT / 'dist/experiments/native-game-mouse-flight'
+sys.path.append(str(EXPERIMENT.parent))
+from package_assets import package_assets
 
 
 def digest(path):
@@ -48,12 +50,7 @@ def build(skip_compiler=False):
         stamp_file.write_text(json.dumps(stamp, indent=2) + '\n', encoding='utf-8')
     DIST.mkdir(parents=True, exist_ok=True)
     shutil.copytree(ROOT / 'src', DIST / 'src', dirs_exist_ok=True)
-    # Copy only the immutable objects referenced by this manifest.
-    manifest = json.loads((assets / 'manifest.json').read_text())
-    (DIST / 'resources_compiled/objects').mkdir(parents=True, exist_ok=True)
-    for entry in manifest['assets'].values():
-        shutil.copyfile(assets / entry['uri'], DIST / 'resources_compiled' / entry['uri'])
-    shutil.copyfile(assets / 'manifest.json', DIST / 'resources_compiled/manifest.json')
+    package_assets(assets, DIST / 'resources_compiled')
     (DIST / 'js').mkdir(exist_ok=True)
     source = NATIVE / 'tutorials/game_mouse_flight.js'
     shutil.copyfile(source, DIST / source.name)

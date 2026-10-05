@@ -12,6 +12,8 @@ ROOT = EXPERIMENT.parents[1]
 NATIVE = ROOT.parent / 'harfang3d'
 WORK = ROOT / 'build/experiments/native-scene-many-nodes'
 DIST = ROOT / 'dist/experiments/native-scene-many-nodes'
+sys.path.append(str(EXPERIMENT.parent))
+from package_assets import package_assets
 
 
 def digest(path):
@@ -38,7 +40,7 @@ def build(skip_compiler=False):
     subprocess.run([str(compiler), str(inputs), str(assets)], check=True)
     DIST.mkdir(parents=True, exist_ok=True)
     shutil.copytree(ROOT / 'src', DIST / 'src', dirs_exist_ok=True)
-    shutil.copytree(assets, DIST / 'resources_compiled', dirs_exist_ok=True)
+    package_assets(assets, DIST / 'resources_compiled')
     (DIST / 'js').mkdir(exist_ok=True)
     shutil.copyfile(NATIVE / 'tutorials/scene_many_nodes.js', DIST / 'scene_many_nodes.js')
     shutil.copyfile(EXPERIMENT / 'window.js', DIST / 'js/window.js')

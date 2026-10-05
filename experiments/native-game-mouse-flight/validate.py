@@ -33,15 +33,27 @@ def compiler_checks():
             assert (result.returncode==0)==ok,result.stdout+result.stderr
         run();manifest=(output/'manifest.json').read_bytes();run();assert manifest==(output/'manifest.json').read_bytes()
         checks+=['native standalone scene compiler, Unicode paths','deterministic image/HDR/geometry compilation']
-        for entry in json.loads(manifest)['assets'].values():
+        for logical_id,entry in json.loads(manifest)['assets'].items():
+            assert entry['uri']==logical_id
             payload=output/entry['uri'];assert digest(payload)==entry['sha256'] and payload.stat().st_size==entry['byteLength']
         checks.append('all compiled payload sizes and hashes')
+        assert not (output/'objects').exists()
+        checks.append('original paths and filenames for every compiled asset')
+        scene=source/'playground/playground.scn';original=scene.read_bytes()
+        updated=json.loads(original);updated['transforms'][0]['pos'][1]+=1
+        scene.write_text(json.dumps(updated),encoding='utf-8');run()
+        assert json.loads((output/'playground/playground.scn').read_bytes())['transforms'][0]['pos']==updated['transforms'][0]['pos']
+        changed=json.loads((output/'manifest.json').read_bytes())['assets']['playground/playground.scn']
+        assert changed['uri']=='playground/playground.scn' and changed['sha256']!=json.loads(manifest)['assets']['playground/playground.scn']['sha256']
+        scene.write_bytes(original);run();assert (output/'manifest.json').read_bytes()==manifest
+        checks.append('changed scene recompiles at the same path and restores deterministically')
         def reject(name,alter,label):
             path=source/name;old=path.read_bytes();new=alter(old)
             if new is None:path.unlink()
             else:path.write_bytes(new)
             try:
                 run(False);assert manifest==(output/'manifest.json').read_bytes()
+                for entry in json.loads(manifest)['assets'].values():assert digest(output/entry['uri'])==entry['sha256']
             finally:path.write_bytes(old)
             checks.append(label)
         reject('paper_plane/Shape.geo',lambda _:b'HGFF','truncated geometry fails before publication')

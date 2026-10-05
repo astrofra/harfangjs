@@ -6,7 +6,8 @@ import {validateSceneJSON} from '../scene/schema.js';
 export async function loadProgramAssets(manifestURL, signal) {
   const url=new URL(manifestURL,document.baseURI);
   const fetchBytes=async target => {
-    const response=await fetch(target,{signal});
+    // Stable source filenames may acquire new bytes on every compiler run.
+    const response=await fetch(target,{signal,cache:'no-store'});
     requireCondition(response.ok,'ASSET_FETCH_FAILED',`${response.status}: ${target}`);
     const data=await response.arrayBuffer();
     requireCondition(data.byteLength<=profile.limits.maxResourceBytes,'ASSET_BUDGET','Program payload is too large'); return data;

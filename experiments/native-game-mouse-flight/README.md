@@ -48,11 +48,22 @@ The generated scene manifest uses `web-native-scene/1` and contains 12 assets:
 three reviewed programs, two scenes, three geometries and four textures.
 The compiled payloads occupy approximately 13.6 MB before HTTP compression.
 
+Compiled files retain their original relative paths and filenames, including
+extensions: `playground/playground.scn`, `playground/Plane.geo`,
+`playground/grid_baseColor.png`, `core/shader/pbr.hps`, etc. Generated probe maps
+retain `core/pbr/probe.hdr.irradiance` and `.radiance`. Their contents remain Web
+compiled formats described by `manifest.json`; SHA-256 is integrity metadata,
+not a filename. There is no hashed `objects/` directory.
+
 The compiler embeds reviewed WebGL adapters for native PBR, depth and `pos_rgb`.
 It verifies the original shader source hashes; it is not a general shader
 translator. Unknown variants, unsupported sampler metadata, missing dependencies
-and malformed supported geometry fail explicitly. Publication preserves the
-previous manifest when compilation fails.
+and malformed supported geometry fail explicitly. The compiler stages a complete
+output before replacing its marked output directory. Compilation failures
+preserve previous files and their manifest; successful rebuilds remove obsolete
+generated files. Packaging applies the same replacement to the release assets.
+Browser preloading bypasses the HTTP cache. Restart the demo or reload the page
+after rebuilding to load the newly compiled files at their stable paths.
 
 The vendored CMFT revision has defects in its memory input cursor. CMake corrects
 a private build copy, allowing conversion from validated bytes and Unicode
@@ -109,7 +120,7 @@ Validated on Windows x64, Chrome 154 and NVIDIA RTX 4060 / ANGLE D3D11:
 | Frame 4 RGB mean absolute error | 0.0073 / 255 |
 | Frame 60 RGB mean absolute error | 0.2807 / 255 |
 | Frame 60 pixels with any channel error >16 | 0.172% |
-| Compiler checks | 9 pass, including Unicode paths and failed publication |
+| Compiler checks | 11 pass, including original filenames, changed scenes, Unicode paths and failed publication |
 | Browser/input/lifecycle checks | 8 pass, including context loss and corrupt assets |
 | GPU resource cleanup | Zero remaining tracked allocations |
 

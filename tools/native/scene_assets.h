@@ -12,7 +12,8 @@ struct AssetOutputs {
   json assets=json::object();
   std::map<std::string,std::string> objects;
   void add(const std::string &id,const std::string &kind,const std::string &bytes,json attributes=json::object()) {
-    const auto hash=sha256(bytes), uri="objects/"+hash+"."+kind+(kind=="texture"?".bin":".json");
+    // Keep native logical paths on disk as well, including source extensions.
+    const auto hash=sha256(bytes), uri=id;
     attributes["kind"]=kind; attributes["uri"]=uri; attributes["sha256"]=hash;
     attributes["byteLength"]=bytes.size(); if(!attributes.contains("dependencies"))attributes["dependencies"]=json::array();
     assets[id]=attributes;objects[uri]=bytes;
