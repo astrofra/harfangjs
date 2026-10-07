@@ -3,8 +3,9 @@
 The JavaScript port of `harfang3d/tutorials/scene_aaa.lua` runs through the same
 native-shaped API as Many Nodes and Mouse Flight. The packaged `scene_aaa.js` is
 byte-identical to `harfang3d/tutorials/scene_aaa.js`; only `js/window.js` selects
-the browser host. The browser renders forward, with explicit AAA and animation
-stubs. The engine's scripted 15-degree-per-second rotation remains active.
+the browser host. The browser renders forward with an explicit AAA fallback.
+`Take 001` plays in a 10-second loop, animating 29 mechanical parts. The engine's
+scripted 15-degree-per-second rotation remains active at the same time.
 
 From `harfangjs/`:
 
@@ -14,8 +15,9 @@ python experiments/native-scene-aaa/serve.py
 ```
 
 Open **http://localhost:8003/**. Pause, Resume and Restart are available; Escape
-stops the scene. MSAA, AAA and animation playback each produce one console
-warning per browser session. Animation stubs never report successful playback.
+stops the scene. Pause freezes both scripted and authored animation; Restart
+reloads the scene and starts the clip again. MSAA and AAA produce warnings;
+animation playback is implemented in JavaScript.
 
 The build needs Python for orchestration, CMake and a C++17 compiler. It builds
 the standalone native `assetc-web`; no native engine, Python or Wasm runs in the
@@ -61,7 +63,8 @@ normal maps, tangent frames, the HDR environment, four directional shadow splits
 and one spotlight shadow. The engine scene's probe has zero parallax and uses
 the existing global environment sampling path.
 
-The build passes `--animation-stubs --max-texture-size 1024` to `assetc-web`.
+The build passes `--max-texture-size 1024` to `assetc-web` and enables its default
+rigid node animation profile (`scene-trs/1`).
 Only compiled PNG textures are resized; source files are untouched. Twelve
 2048-square textures would exceed the current 128 MiB budget in portable RGBA8.
 Native BC3 metadata is reported and converted to RGBA8; the manifest records both
@@ -86,20 +89,21 @@ blending to the shared native scene renderer; the engine fixture remains opaque.
 
 The native tutorial uses real AAA by default, as the Lua tutorial does. Calling
 `main({aaa:false})` selects native forward rendering for comparison. Native
-animation support is unchanged; stubs belong only to the Web facade.
+animation playback is used as the Web reference. Only AAA remains a Web stub.
 
 ```powershell
 .venv/Scripts/python.exe experiments/native-scene-aaa/validate.py --skip-build --native ../install/js_bullet/hgjs/hgjs.exe
 ```
 
 The validator runs 60 fixed-step frames in native OpenGL and browser WebGL2,
-compares rotation and native API defaults/return types, and checks images 4 and
-60. Native textures retain their original resolution/compression; the image
+compares the 29 animated world matrices, scripted rotation and native API
+defaults/return types, and checks images 4 and 60. Native textures retain their original resolution/compression; the image
 threshold is mean channel error below 2/255 and fewer than 3% of pixels differing
-by more than 16. It also checks stub warnings, typed empty animation lists,
-instance views, cycle rollback, pause/resume, resize, restart and zero GPU
-resources after stopping. Compiler checks cover deterministic output, resizing,
-explicit animation opt-in and failed-build preservation.
+by more than 16. It also checks the exact 10-second loop, once playback, invalid
+animation handles, independently animated instance views, cycle rollback,
+pause/resume, resize, restart and zero GPU resources after stopping. Compiler
+checks cover deterministic output, resizing, invalid animation rejection and
+failed-build preservation. See [supported animation channels](../../docs/animations.md).
 
 Reports and captures: `build/experiments/native-scene-aaa/reports/`. Add
 `?test&frames=60` to the page URL for fixed-step capture and inspect

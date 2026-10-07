@@ -4,6 +4,7 @@ import {Vec3, Vec4, Color, Deg, Mat4, Mat44, Inverse, TransformationMat4, FovToZ
 import {profile} from '../profile.js';
 import {Material} from '../render/materials.js';
 import {time_from_ns} from '../core/time.js';
+import {GetSceneAnimInfo,InvalidSceneAnimRef} from './animation.js';
 
 const handles = new WeakMap();
 const destructionObservers = new WeakMap();
@@ -130,6 +131,11 @@ export class Node extends Handle {
   SetInstance(instance) { const v=value(this);v.instance=token(instance,v.instances); }
   IsInstantiatedBy() { const v=value(this);return new Node(v.nodes,v.instanceOwner); }
   GetInstanceSceneView() { return value(this).instanceView??new SceneView([]); }
+  GetInstanceSceneAnim(name) {
+    requireCondition(typeof name==='string','INVALID_ARGUMENT','Expected animation name');
+    const v=value(this);
+    return (v.instanceAnimations??[]).find(ref=>GetSceneAnimInfo(v.animationScene,ref).name===name&&GetSceneAnimInfo(v.animationScene,ref).valid)??InvalidSceneAnimRef;
+  }
   IsEnabled() { const v=value(this);return v.enabled&&!v.instanceDisabled; }
   IsItselfEnabled() { return value(this).enabled; }
   Enable() { value(this).enabled = true;if(this.IsEnabled())setInstanceEnabled(this,true); }
@@ -168,8 +174,9 @@ export class SceneView {
   GetNodes() { return new NodeList(this.#nodes); }
   GetNode(scene,name) { return this.#nodes.find(node=>node.IsValid()&&node.GetName()===name)??new Node(); }
 }
-export function attachInstanceView(root,children) {
+export function attachInstanceView(root,children,scene,animations=[]) {
   const owner=handles.get(root);value(root).instanceView=new SceneView(children);
+  value(root).instanceAnimations=animations;value(root).animationScene=scene;
   for(const child of children){value(child).instanceOwner=owner;value(child).instantiated=true;}
 }
 export class Camera extends Handle {

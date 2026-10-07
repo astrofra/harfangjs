@@ -37,7 +37,7 @@ is supported. The runtime has no package or Wasm dependency.
 
 ## Rendering and limits
 
-The current implementation includes static scenes and instances, indexed models,
+The current implementation includes scenes, instances, rigid node animations, indexed models,
 procedural models, default and PBR materials, normal/ORM/emissive maps,
 transparency, fog, HDR environments, line rendering, instancing and bounded
 directional/spot shadow support. Shader families and variants must have reviewed
@@ -49,8 +49,10 @@ eight light slots, 4096-pixel texture/drawing dimensions, 64 MiB per payload and
 a default 128 MiB asset/GPU budget. PBR Scene explicitly raises its budgets to
 256 MiB for original-resolution textures. Device limits can be tighter.
 
-Skinning, physics, audio, arbitrary shader translation and animation playback
-are unsupported. The Engine demo opts into warned AAA/animation stubs; AAA calls
-use forward rendering and animation tracks do not play. Global environment
+Skinning, physics, audio and arbitrary shader translation are unsupported.
+Rigid node animation playback supports TRS and enable tracks, including instance
+autoplay; [animation playback](animations.md) lists the supported API and limits.
+The Engine demo plays its authored mechanical animation. AAA calls still use the
+warned forward rendering fallback. Global environment
 probes are supported; parallax-corrected probes are rejected. See each demo's
 README for its actual rendering scope and validation evidence.

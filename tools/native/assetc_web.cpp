@@ -74,7 +74,7 @@ static int run(const std::vector<std::string> &args) {
       std::cout<<"assetc-web [options] <input-directory> [output-directory]\n"
         "Reviewed default/PBR/line programs, static scenes/geometry, PNG/JPEG/DDS and HDR probes.\n"
         "-q/-quiet -v/-verbose -progress -j/-job N -l/-log_errors_to_stderr\n"
-        "--animation-stubs: preserve animation data without Web playback\n"
+        "--animation-stubs: legacy opt-out from rigid node animation playback\n"
         "--max-texture-size N: resize PNG/JPEG before mip generation (default: original size)\n"
         "--compression lz4|none: lossless asset transport (default: LZ4 HC level 12)\n"
         "Fixed WebGL 2 target; unsupported options/content fail.\n"; return 0;
@@ -163,7 +163,8 @@ static int run(const std::vector<std::string> &args) {
   manifest["assets"]=compiled.assets;manifest["sourceHashes"]=source_hashes;
   if(animation_stubs){manifest["animationPlayback"]="stub";std::cerr<<"assetc-web: warning: animation playback is stubbed; tracks are preserved but will not play.\n";}
   manifest["maxTextureSize"]=max_texture_size;
-  if(scene_profile){manifest["profile"]="web-native-scene/1";manifest["compiler"]="assetc-web/scene-1";manifest["buildId"]=sha256(compiled.assets.dump());}
+  if(scene_profile){manifest["profile"]="web-native-scene/1";manifest["compiler"]="assetc-web/scene-1";manifest["buildId"]=sha256(compiled.assets.dump());
+    if(!animation_stubs)manifest["animationPlayback"]="scene-trs/1";}
   // Validate/compile everything first, then replace the complete owned output.
   // Stable filenames can change bytes, and obsolete hashed files disappear.
   publish(output,compiled,manifest);

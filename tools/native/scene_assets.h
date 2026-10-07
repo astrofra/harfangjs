@@ -164,16 +164,17 @@ static void compile_image(AssetOutputs &out,const fs::path &source,const std::st
     }
   }
 }
+#include "animation_assets.h"
 static std::set<std::string> scene_dependencies(const json &scene,bool animation_stubs) {
   std::set<std::string> deps;
   for(const auto &field:{"scripts","scene_scripts","rigid_bodies","collisions"})
     check(!scene.contains(field)||scene[field].empty(),std::string("Unsupported scene content: ")+field);
-  for(const auto &field:{"anims","scene_anims"})if(scene.contains(field)&&!scene[field].empty())
-    check(animation_stubs,"Animation playback unsupported; opt in with --animation-stubs to retain tracks without playback");
+  if(!animation_stubs)validate_animations(scene);
   if(scene.contains("instances"))for(const auto &instance:scene["instances"]) {
     for(const auto &field:instance.items())check(field.key()=="name"||field.key()=="anim"||field.key()=="loop_mode","Unsupported instance field: "+field.key());
     deps.insert(instance.at("name").get<std::string>());
-    if(instance.contains("anim")&&!instance["anim"].get<std::string>().empty())check(animation_stubs,"Instance animation requires --animation-stubs");
+    if(instance.contains("anim"))check(instance["anim"].is_string(),"Invalid instance animation name");
+    if(instance.contains("loop_mode"))check(instance["loop_mode"].is_number_integer()&&instance["loop_mode"]>=0&&instance["loop_mode"]<=2,"Invalid instance animation loop mode");
   }
   check(scene.contains("nodes")&&scene["nodes"].is_array()&&scene["nodes"].size()<=16384,"Invalid scene nodes");
   if(scene.contains("objects"))for(const auto &object:scene["objects"]) {

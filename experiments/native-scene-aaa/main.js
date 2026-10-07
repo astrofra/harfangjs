@@ -8,7 +8,7 @@ const frameLimit=testing?Number(parameters.get('frames')??12):Infinity;
 let application,completion,lastTime,smoothed=0;
 async function start() {
   pause.disabled=restart.disabled=true;error.textContent='';status.hidden=false;status.textContent='Loading assets 0%';
-  window.engineScene={state:'loading',history:[],captures:{},samples:[]};lastTime=undefined;
+  window.engineScene={state:'loading',history:[],captures:{},samples:[],animationSamples:[]};lastTime=undefined;
   try {
     application=await createNativeBrowserApplication({canvas,manifestURL:new URL('./resources_compiled/manifest.json',import.meta.url),
       onAssetProgress(progress) {
@@ -25,6 +25,10 @@ async function start() {
         if(testing) {
           window.engineScene.history.push(s);
           window.engineScene.samples.push([...host.currentScene.GetNode('engine_master').GetTransform().GetRot().data]);
+          const source=host.assets.scenes.get('car_engine/engine.scn');
+          const names=source.scene_anims[0].node_anims.map(b=>source.nodes.find(n=>n.idx===b.node).name);
+          window.engineScene.animationSamples.push({playing:host.currentScene.GetPlayingAnimRefs().length,
+            worlds:names.map(name=>[...host.currentScene.GetNode(name).GetTransform().GetWorld().data])});
           if(host.frames===4||host.frames===frameLimit)window.engineScene.captures[host.frames]=canvas.toDataURL('image/png');
         }
       }});

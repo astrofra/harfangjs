@@ -64,7 +64,7 @@ def build(skip_compiler=False, max_texture_size=1024):
              'sources': {name: digest(inputs / name) for name in sorted(names)}}
     stamp_file = WORK / 'compile-stamp.json'
     if not stamp_file.exists() or json.loads(stamp_file.read_text()) != stamp or not (assets / 'manifest.json').exists():
-        subprocess.run([str(compiler), '--animation-stubs', '--max-texture-size', str(max_texture_size), str(inputs), str(assets)], check=True)
+        subprocess.run([str(compiler), '--max-texture-size', str(max_texture_size), str(inputs), str(assets)], check=True)
         stamp_file.write_text(json.dumps(stamp, indent=2) + '\n', encoding='utf-8')
     DIST.mkdir(parents=True, exist_ok=True)
     package_runtime(ROOT / 'src', DIST / 'src')

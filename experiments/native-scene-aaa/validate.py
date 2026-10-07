@@ -30,7 +30,7 @@ def compiler_checks():
     with tempfile.TemporaryDirectory(prefix='hg-engine-') as directory:
         source, output = Path(directory) / 'source', Path(directory) / 'compiled'
         shutil.copytree(WORK / 'asset-input', source)
-        options = ['--animation-stubs', '--max-texture-size', '1024']
+        options = ['--max-texture-size', '1024']
         def run(arguments, success):
             result = subprocess.run([str(compiler), '-q', *arguments, str(source), str(output)], capture_output=True,
                                     text=True, encoding='utf-8', errors='replace', timeout=90)
@@ -45,13 +45,20 @@ def compiler_checks():
             if entry['kind'] == 'texture' and name.endswith('.png'):
                 assert max(entry['levels'][0]['width'], entry['levels'][0]['height']) <= 1024
         checks.append('PNG texture limit applied by assetc-web with original logical paths')
-        failure = run(['--max-texture-size', '1024'], False)
-        assert '--animation-stubs' in failure.stderr
-        checks.append('animation tracks require explicit stub opt-in')
+        assert metadata['animationPlayback'] == 'scene-trs/1'
+        checks.append('rigid node animation playback enabled by default')
         run(['--max-texture-size', '123'], False)
         checks.append('invalid resize limit rejected')
         path = source / 'car_engine/engine.scn'
         scene = json.loads(path.read_text())
+        original = path.read_bytes()
+        scene['anims'][0]['anim']['quat'][0]['keys'][0]['v'] = [0, 0, 0, 0]
+        path.write_text(json.dumps(scene), encoding='utf-8')
+        assert 'quaternion' in run(options, False).stderr
+        assert (output / 'manifest.json').read_bytes() == manifest
+        path.write_bytes(original)
+        scene = json.loads(original)
+        checks.append('invalid animation fails before publication')
         scene['environment']['probe']['parallax'] = 1
         path.write_text(json.dumps(scene), encoding='utf-8')
         failure = run(options, False)
@@ -64,8 +71,10 @@ def compiler_checks():
 
 NATIVE_WINDOW = """import * as hg from 'harfang';
 import {nextFrame} from 'harfang-host';
-let frame=0;const samples=[];const update=hg.Scene.prototype.Update;
-hg.Scene.prototype.Update=function(dt){update.call(this,dt);const v=this.GetNode('engine_master').GetTransform().GetRot();samples.push([v.x,v.y,v.z]);};
+let frame=0;const samples=[],animationSamples=[],names=ANIMATED_NODE_NAMES;const update=hg.Scene.prototype.Update;
+hg.Scene.prototype.Update=function(dt){update.call(this,dt);const v=this.GetNode('engine_master').GetTransform().GetRot();samples.push([v.x,v.y,v.z]);
+  animationSamples.push({playing:this.GetPlayingAnimRefs().length,worlds:names.map(name=>{
+    const m=this.GetNode(name).GetTransform().GetWorld();return [hg.GetX(m),hg.GetY(m),hg.GetZ(m),hg.GetT(m)].flatMap(v=>[v.x,v.y,v.z]);})});};
 export async function runWindow(title,create,options={}) {
   hg.AddAssetsFolder('../assets-native');hg.InputInit();hg.WindowSystemInit();
   const window=hg.NewWindow(title,960,625,32,hg.WV_Hidden);let app,initialized=false;
@@ -75,6 +84,7 @@ export async function runWindow(title,create,options={}) {
     for(frame=0;frame<60;++frame){await nextFrame(window);app.draw(16666667n,960,625);
       if(frame===3||frame===59)hg.RequestScreenShot(hg.InvalidFrameBufferHandle,'../reports/native-engine-'+(frame+1));hg.Frame();}
     console.log('ENGINE_SAMPLES '+JSON.stringify(samples));
+    console.log('ENGINE_ANIMATION_SAMPLES '+JSON.stringify(animationSamples));
   } finally {try{app?.dispose();}finally{if(initialized)hg.RenderShutdown();hg.DestroyWindow(window);hg.WindowSystemShutdown();hg.InputShutdown();}}
 }
 """
@@ -90,7 +100,9 @@ def native_reference(executable, assetc):
     (directory / 'js').mkdir(parents=True, exist_ok=True)
     shutil.copyfile(NATIVE / 'tutorials/scene_aaa.js', directory / 'scene_aaa.js')
     shutil.copyfile(EXPERIMENT / 'contract.js', directory / 'contract.js')
-    (directory / 'js/window.js').write_text(NATIVE_WINDOW, encoding='utf-8')
+    source_scene = json.loads((WORK / 'asset-input/car_engine/engine.scn').read_bytes())
+    names = [next(n['name'] for n in source_scene['nodes'] if n['idx'] == b['node']) for b in source_scene['scene_anims'][0]['node_anims']]
+    (directory / 'js/window.js').write_text(NATIVE_WINDOW.replace('ANIMATED_NODE_NAMES', json.dumps(names)), encoding='utf-8')
     (directory / 'forward.js').write_text("import {main as scene} from './scene_aaa.js';export function main(){return scene({aaa:false});}\n")
     result = subprocess.run([str(executable), 'forward.js'], cwd=directory, capture_output=True, text=True,
                             encoding='utf-8', errors='replace', timeout=120)
@@ -105,7 +117,9 @@ def native_reference(executable, assetc):
     result.check_returncode()
     contract = re.search(r'ENGINE_CONTRACT (\{[^\r\n]*\})', result.stdout)
     assert contract, result.stdout + result.stderr
-    return {'samples': json.loads(match[1]), 'contract': json.loads(contract[1]), 'mode': 'forward, aaa:false',
+    animation_samples = re.search(r'ENGINE_ANIMATION_SAMPLES (\[[^\r\n]*\])', (REPORTS / 'native-engine.log').read_text())
+    assert animation_samples, 'Missing native animation samples'
+    return {'samples': json.loads(match[1]), 'animationSamples': json.loads(animation_samples[1]), 'contract': json.loads(contract[1]), 'mode': 'forward, aaa:false',
             'textures': 'Original native resolution/compression; Web texture size is recorded separately.'}
 
 
@@ -135,14 +149,16 @@ def browser_reference(native):
             page.add_init_script('Object.defineProperty(window,"WebAssembly",{get(){throw Error("Wasm is forbidden");}});')
             page.goto(f'{origin}/?test&frames={FRAMES}')
             page.wait_for_function("['stopped','failed'].includes(window.engineScene?.state)", timeout=120000)
-            report = page.evaluate('({state:engineScene.state,error:engineScene.error,history:engineScene.history,samples:engineScene.samples,finalResources:engineScene.finalResources})')
+            report = page.evaluate('({state:engineScene.state,error:engineScene.error,history:engineScene.history,samples:engineScene.samples,animationSamples:engineScene.animationSamples,finalResources:engineScene.finalResources})')
             assert report['state'] == 'stopped', report
             assert not errors, errors
             assert len(report['samples']) == FRAMES
             assert report['history'][-1]['scene']['nodes'] == 126
             assert report['history'][-1]['shadowPasses'] == 5
             assert report['history'][-1]['shadowMaps'] == 2
-            assert len(report['history'][-1]['warnings']) == 3
+            assert len(report['history'][-1]['warnings']) == 2
+            assert all(s['playing'] == 1 and len(s['worlds']) == 29 for s in report['animationSamples'])
+            assert report['animationSamples'][0]['worlds'] != report['animationSamples'][-1]['worlds']
             report['drawMsMedian'] = statistics.median(frame['drawMs'] for frame in report['history'][4:])
             for frame in [4, FRAMES]:
                 capture = page.evaluate(f'engineScene.captures[{frame}]')
@@ -151,6 +167,10 @@ def browser_reference(native):
             report['contract'] = page.evaluate("async()=>{const {main}=await import('./contract.js');return main();}")
             if native:
                 common.compare_contract(native['samples'], report['samples'], 'engine rotation')
+                differences = [abs(a-b) for x,y in zip(native['animationSamples'],report['animationSamples'])
+                               for m,n in zip(x['worlds'],y['worlds']) for a,b in zip(m,n)]
+                report['animationMaxMatrixError'] = max(differences)
+                assert report['animationMaxMatrixError'] < 1e-4, report['animationMaxMatrixError']
                 common.compare_contract(native['contract'], report['contract'], 'stub signatures/defaults')
                 report['imageComparisons'] = {}
                 for frame in [4, FRAMES]:
@@ -171,16 +191,33 @@ def browser_reference(native):
               if(hg.IsValid(aaa))throw Error('Stub claims real AAA GPU resources');
               hg.DestroyForwardPipelineAAA(aaa);hg.DestroyForwardPipelineAAA(aaa);
               const scene=new hg.Scene(),ref=scene.GetSceneAnim('Take 001'),play=scene.PlayAnim(ref);
-              if(scene.IsPlaying(play)||scene.GetPlayingAnimRefs().size()!==0n)throw Error('Stub claims playback');
-              return ['AAA allocation-free invalid handle','idempotent AAA destruction','animation never reports playback'];
+              if(scene.IsPlaying(play)||scene.GetPlayingAnimRefs().size()!==0n)throw Error('Missing clip claims playback');
+              return ['AAA allocation-free invalid handle','idempotent AAA destruction','invalid animation handles reject playback'];
             }""")
             report['lifecycle'] = []
             page.goto(f'{origin}/?test&frames=100000')
             page.wait_for_function('engineScene.history.length>=3')
             page.locator('#pause').click()
             frame = page.evaluate('engineScene.host.frames')
+            paused_pose = page.evaluate('engineScene.animationSamples.at(-1)')
             page.wait_for_timeout(100)
             assert page.evaluate('engineScene.host.frames') == frame
+            assert page.evaluate('engineScene.animationSamples.at(-1)') == paused_pose
+            report['animationChecks'] = page.evaluate("""async()=>{
+              const hg=await import('harfang'),host=engineScene.host,scene=host.currentScene;
+              const clip=scene.GetSceneAnim('Take 001'),info=hg.GetSceneAnimInfo(scene,clip);
+              if(!info.valid||info.t_end-info.t_start!==10000000000n)throw Error('Missing ten-second clip');
+              scene.StopAllAnims();const play=scene.PlayAnim(clip,hg.ALM_Loop);scene.Update(0n);
+              const names=host.assets.scenes.get('car_engine/engine.scn').scene_anims[0].node_anims.map(b=>
+                host.assets.scenes.get('car_engine/engine.scn').nodes.find(n=>n.idx===b.node).name);
+              const pose=()=>names.map(n=>[...scene.GetNode(n).GetTransform().GetWorld().data]);
+              const first=JSON.stringify(pose());scene.Update(10000000000n);
+              if(JSON.stringify(pose())!==first||!scene.IsPlaying(play))throw Error('Ten-second loop mismatch');
+              scene.StopAllAnims();const once=scene.PlayAnim(clip);scene.Update(10000000000n);
+              if(scene.IsPlaying(once))throw Error('Once failed to stop');
+              scene.PlayAnim(clip,hg.ALM_Loop);
+              return ['29 authored node tracks','exact ten-second loop','once endpoint stops','UI pause freezes animation'];
+            }""")
             report['instanceChecks'] = page.evaluate("""async()=>{
               const hg=await import('harfang'),host=engineScene.host,scene=host.currentScene;
               if(scene.GetNodes().length!==123||scene.GetAllNodes().length!==126)throw Error('Instance node enumeration mismatch');
@@ -192,7 +229,33 @@ def browser_reference(native):
               try{hg.LoadSceneFromAssets(key,fresh,resources,hg.GetForwardPipelineInfo());}catch(e){rejected=e.code==='INVALID_SCENE';}
               finally{host.assets.scenes.delete(key);}
               if(!rejected||Object.values(fresh.stats).some(n=>n!==0))throw Error('Cyclic instance failed to roll back');
-              fresh.Clear();return ['native node lists exclude instance children','three instance scene views','cyclic instances reject and roll back'];
+              fresh.Clear();
+              const child='animated-child.scn',parent='animated-parent.scn';
+              const trs=x=>({pos:[x,0,0],rot:[0,0,0],scl:[1,1,1],parent:null});
+              const childBody={nodes:[{idx:7,name:'moving',components:[0,null,null,null,null]}],transforms:[trs(0)],
+                anims:[{idx:3,anim:{t_start:0,t_end:1000000000,flags:[],vec3:[{target:'Position',keys:[
+                  {t:0,v:[0,0,0],tension:0,bias:0},{t:1000000000,v:[10,0,0],tension:0,bias:0}]}]}}],
+                scene_anims:[{name:'walk',t_start:0,t_end:1000000000,anim:null,node_anims:[{node:7,anim:3}]}]};
+              const parentBody={nodes:[0,1].map(i=>({idx:i,name:'instance'+i,components:[i,null,null,null,null],instance:0})),
+                transforms:[trs(0),trs(100)],instances:[{name:child,anim:'walk',loop_mode:hg.ALM_Loop}]};
+              host.assets.scenes.set(child,childBody);host.assets.scenes.set(parent,parentBody);
+              try {
+                hg.LoadSceneFromAssets(parent,fresh,resources,hg.GetForwardPipelineInfo());fresh.Update(500000000n);
+                const roots=[fresh.GetNode('instance0'),fresh.GetNode('instance1')];
+                const refs=roots.map(n=>n.GetInstanceSceneAnim('walk'));
+                if(refs[0].equals(refs[1])||fresh.GetSceneAnims().length||fresh.GetPlayingAnimRefs().length!==2)throw Error('Instance clip scope');
+                roots.forEach((n,i)=>{
+                  const moving=n.GetInstanceSceneView().GetNode(fresh,'moving');
+                  if(Math.abs(hg.GetT(moving.GetTransform().GetWorld()).x-(5+i*100))>1e-5)throw Error('Instance track remapping');
+                });
+                fresh.DestroyNode(roots[0]);if(fresh.GetPlayingAnimRefs().length!==1)throw Error('Instance player cleanup');fresh.Clear();
+                parentBody.instances.push({name:parent});parentBody.nodes[1].instance=1;
+                let rolledBack=false;try{hg.LoadSceneFromAssets(parent,fresh,resources,hg.GetForwardPipelineInfo());}
+                catch(e){rolledBack=e.code==='INVALID_SCENE';}
+                if(!rolledBack||fresh.GetPlayingAnimRefs().length||Object.values(fresh.stats).some(n=>n!==0))throw Error('Animated instance rollback');
+              } finally {fresh.Clear();host.assets.scenes.delete(child);host.assets.scenes.delete(parent);}
+              return ['native node lists exclude instance children','three instance scene views','cyclic instances reject and roll back',
+                'two animated instances have independent bindings','instance autoplay and destruction','animated load rollback'];
             }""")
             page.set_viewport_size({'width': 800, 'height': 600})
             page.locator('#pause').click()
@@ -206,7 +269,7 @@ def browser_reference(native):
             page.evaluate('window.oldEngineHost=engineScene.host')
             page.locator('#restart').click()
             page.wait_for_function('engineScene.host!==window.oldEngineHost&&engineScene.history.length>=3')
-            assert page.evaluate('engineScene.metrics.warnings.length') == 3
+            assert page.evaluate('engineScene.metrics.warnings.length') == 2
             page.evaluate('async()=>{engineScene.host.pause();await engineScene.host.stop();}')
             assert page.evaluate('engineScene.finalResources.gpuBytes') == 0
             report['lifecycle'].append('restart and stop while paused')
@@ -230,7 +293,7 @@ def main():
         build()
     REPORTS.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((DIST / 'resources_compiled/manifest.json').read_text())
-    assert manifest['animationPlayback'] == 'stub'
+    assert manifest['animationPlayback'] == 'scene-trs/1'
     for name, entry in manifest['assets'].items():
         assert entry['uri'] == name + '.lz4'
         read_asset(DIST / 'resources_compiled' / entry['uri'], entry)

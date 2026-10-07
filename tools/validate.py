@@ -11,6 +11,7 @@ if __name__ == '__main__':
     parser.add_argument('--skip-build', action='store_true')
     args = parser.parse_args()
     print(f'Runtime import audit: {len(audit_runtime())} modules', flush=True)
+    subprocess.run([sys.executable, str(ROOT / 'tools/validate_animation.py')], check=True)
     if not args.skip_build:
         subprocess.run([sys.executable, str(ROOT / 'tools/build.py'), '--demo', args.demo], check=True)
     if args.demo in ('all', 'many-nodes'):

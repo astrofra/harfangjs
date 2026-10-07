@@ -1,6 +1,7 @@
 import {requireCondition} from '../core/errors.js';
 import {profile, requireCapabilities, validateLogicalPath} from '../profile.js';
 import {materialContract} from '../render/material-contract.js';
+import {validateAnimations} from './animation-schema.js';
 
 export const nullReference = value => value === null || value === undefined || value === 4294967295;
 export function validateSceneJSON(scene, {source = 'scene', maxNodes=profile.limits.maxNodes, animationStubs=false} = {}) {
@@ -15,10 +16,10 @@ export function validateSceneJSON(scene, {source = 'scene', maxNodes=profile.lim
     for (const key of Object.keys(object)) requireCondition(keys.includes(key), 'UNSUPPORTED_SCENE_FEATURE', `Unknown field ${key}`, `${source}${path}`);
   };
   for (const key of fields) check(scene[key] === undefined || scene[key] === null || Array.isArray(scene[key]), `${key} must be an array`);
-  for (const key of ['anims', 'scene_anims', 'rigid_bodies', 'collisions', 'scripts', 'scene_scripts', 'videos']) {
-    if(['anims','scene_anims'].includes(key)&&animationStubs)continue;
+  for (const key of ['rigid_bodies', 'collisions', 'scripts', 'scene_scripts', 'videos']) {
     requireCondition(!scene[key]?.length, 'UNSUPPORTED_SCENE_FEATURE', `${key} is not supported by the Web runtime`, source);
   }
+  if(!animationStubs)validateAnimations(scene,source);
   const transforms = scene.transforms ?? [], cameras = scene.cameras ?? [], objects = scene.objects ?? [], nodes = scene.nodes ?? [];
   check(nodes.length <= maxNodes, 'Node budget exceeded');
   const ids = new Map();
@@ -41,7 +42,8 @@ export function validateSceneJSON(scene, {source = 'scene', maxNodes=profile.lim
   const vec = (v, count, path) => check(Array.isArray(v) && v.length === count && v.every(Number.isFinite), 'Invalid numeric vector', path);
   for(const [i,instance] of (scene.instances??[]).entries()) {
     only(instance,['name','anim','loop_mode'],`.instances[${i}]`);validateLogicalPath(instance.name);
-    requireCondition(animationStubs||!instance.anim,'UNSUPPORTED_SCENE_FEATURE','Instance animation playback is unavailable',source);
+    check(instance.anim===undefined||typeof instance.anim==='string','Invalid instance animation name');
+    check(instance.loop_mode===undefined||[0,1,2].includes(instance.loop_mode),'Invalid instance animation loop mode');
   }
   transforms.forEach((t, i) => {
     only(t, ['pos','rot','scl','parent'], `.transforms[${i}]`);

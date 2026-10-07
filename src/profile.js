@@ -4,7 +4,7 @@ import {requireCondition} from './core/errors.js';
 export const profile = Object.freeze({
   api: 'harfang-js/1', id: 'web-native-forward/1', assetSchema: 'harfang-web-program-assets/1',
   capabilities: Object.freeze(['math.foundation', 'scene.handles', 'scene.static', 'scene.hierarchy',
-    'scene.camera', 'scene.lights', 'input.keyboard', 'input.mouse', 'render.lines', 'render.mesh',
+    'scene.camera', 'scene.lights', 'scene.animation-trs', 'input.keyboard', 'input.mouse', 'render.lines', 'render.mesh',
     'render.forward', 'render.spot-shadow', 'render.directional-shadow', 'render.draw-instancing',
     'render.environment', 'render.textures', 'render.alpha-blend', 'render.fog', 'render.ambient',
     'material.default', 'material.pbr', 'material.alpha-cut', 'material.blend']),

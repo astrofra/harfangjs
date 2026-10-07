@@ -1,5 +1,5 @@
 // Native-shaped API slice, implemented by shared JS scene/math and WebGL services.
-// Unsupported overloads fail, except the explicitly warned AAA/animation stubs.
+// Unsupported overloads fail, except the explicitly warned AAA fallback.
 // The native HG JS API remains the reference.
 export * from '../core/errors.js';
 export * from '../core/math.js';
@@ -9,7 +9,7 @@ export {VertexLayout, Vertices, A_Position, A_Color0, AT_Float} from '../render/
 export {Node, Transform, Camera, ObjectComponent, Light, Instance, SceneView, LT_Linear, LT_Point, LT_Spot} from '../scene/scene.js';
 export {Model, CreateCubeModel, CreateSphereModel, CreatePlaneModel, VertexLayoutPosFloatNormUInt8} from '../render/models.js';
 export * from '../render/materials.js';
-import {Scene as BaseScene, NodeList, attachInstanceView, setTransformMatrix, setObjectModelReference, LT_Spot, LT_Linear, LT_Point} from '../scene/scene.js';
+import {Scene as BaseScene, NodeList, attachInstanceView, watchNodeDestruction, setTransformMatrix, setObjectModelReference, LT_Spot, LT_Linear, LT_Point} from '../scene/scene.js';
 export {NodeList};
 import {Color, Vec3, Vec4, Deg, Deg3} from '../core/math.js';
 import {integer, requireCondition} from '../core/errors.js';
@@ -24,18 +24,21 @@ export {VertexLayoutPosFloatColorFloat,LoadProgramFromAssets,DestroyProgram,SetV
   FC_Disabled,FC_Clockwise,FC_CounterClockwise,CF_Color,CF_Depth,CF_Stencil} from './lines.js';
 import {getHost,optionalHost} from './context.js';
 import {profile} from '../profile.js';
-import {animationMethods,validateAAAArguments,warnStub} from './stubs.js';
+import {validateAAAArguments,warnStub} from './stubs.js';
+import {animationMethods,addAnimations,clearAnimations,removeAnimations} from '../scene/animation.js';
+export {SceneAnimRef,ScenePlayAnimRef,InvalidSceneAnimRef,InvalidScenePlayAnimRef,SceneAnimRefList,ScenePlayAnimRefList,StringList,
+  SceneAnimInfo,GetSceneAnimInfo,ALM_Once,ALM_Infinite,ALM_Loop,E_Linear,UnspecifiedAnimTime} from '../scene/animation.js';
 export {ForwardPipelineAAAConfig,ForwardPipelineAAA,CreateForwardPipelineAAAFromAssets,DestroyForwardPipelineAAA,IsValid,
-  BR_Equal,BR_Half,BR_Quarter,BR_Eighth,BR_Sixteenth,BR_Double,FPAAADB_None,FPAAADB_SSGI,FPAAADB_SSR,
-  SceneAnimRef,ScenePlayAnimRef,InvalidSceneAnimRef,SceneAnimRefList,ScenePlayAnimRefList,StringList,
-  ALM_Once,ALM_Infinite,ALM_Loop,E_Linear,UnspecifiedAnimTime} from './stubs.js';
+  BR_Equal,BR_Half,BR_Quarter,BR_Eighth,BR_Sixteenth,BR_Double,FPAAADB_None,FPAAADB_SSGI,FPAAADB_SSR} from './stubs.js';
 export {profile};
 
 export const LST_None=0, LST_Map=1;
 export const RF_None=0, RF_VSync=128, RF_MSAA4X=32, RF_MSAA8X=48;
 export class Scene extends BaseScene {
   constructor() { super({maxNodes:profile.limits.maxNodes,nativeWorldCache:true});this.environment.brdf_map=InvalidTextureRef; optionalHost()?.scenes.add(this); }
-  Clear(){super.Clear();this.environment.brdf_map=InvalidTextureRef;}
+  Clear(){clearAnimations(this);super.Clear();this.environment.brdf_map=InvalidTextureRef;}
+  dispose(){clearAnimations(this);super.dispose();}
+  Update(dt){this.UpdatePlayingAnims(dt);super.Update(dt);}
   GetNodes(){return new NodeList(super.GetNodes());}
   GetAllNodes(){return new NodeList(super.GetAllNodes());}
   CreateObject(model,materials=[]) {
@@ -196,7 +199,7 @@ function modelResource(name,resources) {
   requireCondition(recipe,'ASSET_NOT_PRELOADED',`Geometry is not preloaded: ${name}`);
   return resources.AddModel(name,new Model(new Float32Array(recipe.vertices),new Uint32Array(recipe.indices),recipe.submeshes,recipe.bounds,recipe.stride));
 }
-function appendScene(name,scene,resources,pipelineInfo,flags,stack=[],transaction={nodes:[],components:[]}) {
+function appendScene(name,scene,resources,pipelineInfo,flags,stack=[],transaction={nodes:[],components:[],animations:[]},instantiated=false) {
   requireCondition(scene instanceof Scene&&resources instanceof PipelineResources&&resources.host===getHost()&&pipelineInfo===info,
     'INVALID_ARGUMENT','Expected Scene, PipelineResources and forward pipeline info');
   requireCondition([LSSF_All,0,1,2,3,4,5,6,7].includes(flags),'UNSUPPORTED_OVERLOAD','Unsupported scene load flags');
@@ -239,14 +242,22 @@ function appendScene(name,scene,resources,pipelineInfo,flags,stack=[],transactio
       for(const n of body.nodes)if(!nullReference(n.instance)) {
         const root=nodes.get(n.idx),instance=body.instances[n.instance];
         root.SetInstance(allocate('Instance',scene.CreateInstance(instance.name)));
-        const children=appendScene(instance.name,scene,resources,pipelineInfo,flags&(LSSF_Nodes|LSSF_Anims),stack,transaction);
+        const children=appendScene(instance.name,scene,resources,pipelineInfo,flags&(LSSF_Nodes|LSSF_Anims),stack,transaction,true);
         requireCondition(children,'ASSET_NOT_PRELOADED',`Missing instance scene: ${instance.name}`);
         for(const child of children)if(child.GetTransform().IsValid()&&!child.GetTransform().GetParent().IsValid())child.GetTransform().SetParent(root);
-        attachInstanceView(root,children);if(n.disabled)root.Disable();
-        if(instance.anim)warnStub('animation');
+        attachInstanceView(root,children,scene,children.animations);if(n.disabled)root.Disable();
+        watchNodeDestruction(root,()=>removeAnimations(scene,children.animations));
+        if(instance.anim&&(flags&LSSF_Anims))scene.PlayAnim(root.GetInstanceSceneAnim(instance.anim),instance.loop_mode??0);
       }
     }
-    if((flags&LSSF_Anims)&&(body.anims?.length||body.scene_anims?.length))warnStub('animation');
+    created.animations=[];
+    if(flags&LSSF_Anims) {
+      if(resources.host.assets.manifest.animationPlayback==='stub') {
+        if(body.anims?.length||body.scene_anims?.length)warnStub('animation');
+      } else {
+        created.animations=addAnimations(scene,body,nodes,instantiated);transaction.animations.push(...created.animations);
+      }
+    }
     if(flags&LSSF_Scene) {
       const env=body.environment??{},maps={};
       for(const key of ['brdf_map','irradiance_map','radiance_map']) {
@@ -261,6 +272,7 @@ function appendScene(name,scene,resources,pipelineInfo,flags,stack=[],transactio
     }
     return created;
   } catch(error) {
+    removeAnimations(scene,transaction.animations);
     for(const node of transaction.nodes.slice().reverse())if(node.IsValid())scene.DestroyNode(node);
     for(const [kind,component] of transaction.components.slice().reverse())if(component.IsValid())scene[`Destroy${kind}`](component);
     throw error;
@@ -272,9 +284,10 @@ export function LoadSceneFromAssets(name,scene,resources,pipelineInfo,flags=LSSF
 export function CreateInstanceFromAssets(scene,matrix,name,resources,pipelineInfo,flags=LSSF_Nodes|LSSF_Anims) {
   const root=nodeWithMatrix(scene,matrix);root.SetName(name);root.SetInstance(scene.CreateInstance(name));
   try {
-    const children=appendScene(name,scene,resources,pipelineInfo,flags);
+    const children=appendScene(name,scene,resources,pipelineInfo,flags,[],undefined,true);
     if(!children)return [root,false];
     for(const node of children)if(node.GetTransform().IsValid()&&!node.GetTransform().GetParent().IsValid())node.GetTransform().SetParent(root);
-    attachInstanceView(root,children);return [root,true];
+    attachInstanceView(root,children,scene,children.animations);
+    watchNodeDestruction(root,()=>removeAnimations(scene,children.animations));return [root,true];
   } catch(error){scene.DestroyNode(root);throw error;}
 }

@@ -38,7 +38,8 @@ assetc-web [options] input-directory [output-directory]
 
 Omitted output defaults to `<input>_compiled`. The fixed rendering target is
 WebGL 2. `--help` lists the supported flags, including `--max-texture-size N`
-and the explicit `--animation-stubs` opt-in. Unsupported content/options fail.
+and the legacy `--animation-stubs` opt-out. Rigid node animation playback is
+enabled by default. Unsupported content/options fail.
 Lossless LZ4 HC level 12 compression is enabled by default for all payload kinds.
 Use `--compression none` for raw output, or `--compression lz4` explicitly.
 
@@ -65,6 +66,12 @@ compressed prepared texture data rather than the source JPEG. Entries include by
 texture layout metadata where applicable. Programs contain reviewed GLSL ES
 sources; scenes and geometry have JSON payloads. Texture payloads use the
 manifest's RGBA8/RGBA16F face and mip descriptions.
+
+Scene builds declare `animationPlayback: "scene-trs/1"`. The compiler validates
+rigid node tracks, key values, timestamps and node/animation references before
+publication; [animation playback](animations.md) describes this profile.
+`--animation-stubs` preserves the previous explicit no-playback mode for older
+projects. The Engine demo requires real playback and does not use this option.
 
 Each asset that becomes smaller is stored as one independent **LZ4 block**
 (not an LZ4 frame, no dictionary or embedded size prefix). Its manifest entry

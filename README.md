@@ -86,6 +86,8 @@ verify Web compatibility; they are not a second product or deployment path.
 
 See [asset compilation](docs/assets.md), [browser API contract and limits](docs/contract.md)
 and [validation](docs/acceptance.md). Native names and semantics are preserved
-where supported; this is not the complete HARFANG binding. Animation playback,
-skinning, physics and arbitrary shader translation remain unsupported. The Engine
-demo explicitly enables AAA/animation stubs and renders through the forward pipeline.
+where supported; this is not the complete HARFANG binding. Rigid node animations
+(position, rotation, scale and enable tracks) play through the native-shaped API;
+see [animation playback](docs/animations.md). Skinning, physics and arbitrary
+shader translation remain unsupported. The Engine demo plays `Take 001` in a
+loop and uses the warned AAA fallback to the forward pipeline.
