@@ -4,14 +4,14 @@
 export * from '../core/errors.js';
 export * from '../core/math.js';
 export * from '../core/time.js';
-export {K_Escape, K_Space, K_Left, K_Right, K_Up, K_Down, MB_0, MB_1, MB_2} from '../core/input.js';
+export {K_Escape, K_Space, K_S, K_D, K_Left, K_Right, K_Up, K_Down, MB_0, MB_1, MB_2} from '../core/input.js';
 export {VertexLayout, Vertices, A_Position, A_Color0, AT_Float} from '../render/lines.js';
 export {Node, Transform, Camera, ObjectComponent, Light, Instance, SceneView, LT_Linear, LT_Point, LT_Spot} from '../scene/scene.js';
 export {Model, CreateCubeModel, CreateSphereModel, CreatePlaneModel, VertexLayoutPosFloatNormUInt8} from '../render/models.js';
 export * from '../render/materials.js';
 import {Scene as BaseScene, NodeList, attachInstanceView, watchNodeDestruction, setTransformMatrix, setObjectModelReference, LT_Spot, LT_Linear, LT_Point} from '../scene/scene.js';
 export {NodeList};
-import {Color, Vec3, Vec4, Deg, Deg3} from '../core/math.js';
+import {Color, Vec3, Vec4, Deg, Deg3, ViewState} from '../core/math.js';
 import {integer, requireCondition} from '../core/errors.js';
 import {Material} from '../render/materials.js';
 import {blendModes,depthTests,cullingModes} from './lines.js';
@@ -33,7 +33,7 @@ export {ForwardPipelineAAAConfig,ForwardPipelineAAA,CreateForwardPipelineAAAFrom
 export {profile};
 
 export const LST_None=0, LST_Map=1;
-export const RF_None=0, RF_VSync=128, RF_MSAA4X=32, RF_MSAA8X=48;
+export const RF_None=0, RF_VSync=128, RF_MSAA4X=32, RF_MSAA8X=48, RF_MaxAnisotropy=256;
 export class Scene extends BaseScene {
   constructor() { super({maxNodes:profile.limits.maxNodes,nativeWorldCache:true});this.environment.brdf_map=InvalidTextureRef; optionalHost()?.scenes.add(this); }
   Clear(){clearAnimations(this);super.Clear();this.environment.brdf_map=InvalidTextureRef;}
@@ -157,13 +157,13 @@ export function SubmitSceneToPipeline(viewId,scene,rect,horizontal,pipeline,reso
   if(extra.length)validateAAAArguments(extra);
   const host=getHost();
   integer(viewId,0,65532,'view ID');
-  requireCondition(rect instanceof IntRect && horizontal===true && pipeline?.alive && pipeline.host===host && resources.host===host,
-    'UNSUPPORTED_OVERLOAD','Expected current-camera forward pipeline submission');
+  requireCondition(rect instanceof IntRect && (horizontal===true||horizontal instanceof ViewState) && pipeline?.alive && pipeline.host===host && resources.host===host,
+    'UNSUPPORTED_OVERLOAD','Expected current-camera or explicit ViewState forward pipeline submission');
   requireCondition(rect.sx===0&&rect.sy===0&&((rect.ex===host.requestedSize[0]&&rect.ey===host.requestedSize[1]) ||
     (rect.ex===host.canvas.width&&rect.ey===host.canvas.height)),
     'UNSUPPORTED_VIEWPORT','This host maps full-window rectangles to the browser canvas');
   for(const ref of resources.programs.values()) requireCondition(ref.IsValid(),'INVALID_HANDLE','Program was destroyed');
-  host.renderer.submit(scene,pipeline); host.currentScene=scene;
+  host.renderer.submit(scene,pipeline,horizontal instanceof ViewState?horizontal:undefined); host.currentScene=scene;
   // Native reserves the spotlight pass whenever a local light is selected.
   // Its final submit resets the returned shadow IDs to 65535 (native behavior).
   const directional=scene.GetLights().filter(n=>n.IsEnabled()&&n.GetLight().GetType()===LT_Linear).sort((a,b)=>b.GetLight().GetPriority()-a.GetLight().GetPriority())[0];

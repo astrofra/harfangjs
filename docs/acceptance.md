@@ -8,8 +8,8 @@ or Chromium. Then run:
 python tools/validate.py
 ```
 
-This audits runtime imports, builds `assetc-web`, packages all four demos and runs
-their browser/compiler checks. `--demo many-nodes|mouse-flight|engine|pbr` selects
+This audits runtime imports, builds `assetc-web`, packages all five demos and runs
+their browser/compiler checks. `--demo many-nodes|mouse-flight|engine|pbr|instances` selects
 one demo; `--skip-build` validates the existing packages.
 
 | Suite | Main checks |
@@ -20,6 +20,7 @@ one demo; `--skip-build` validates the existing packages.
 | Mouse Flight | Scene/instance compilation, HDR, input/camera updates, native API fixture and cleanup |
 | Engine | 29 animated parts, 10-second loop, independent animated instances, native matrix/image comparison, PBR maps, shadow passes, AAA fallback, budgets and lifecycle |
 | PBR Scene | JPEG conversion/mipmaps, alpha sorting, original texture budgets, asset integrity and lifecycle |
+| Scene Instances | 20 animated actors, private animation bindings, explicit camera, S/D spawning/removal, shared-component collection and GPU cleanup |
 
 Reports and screenshots are written under
 `build/experiments/<demo>/reports/`. The individual validators optionally accept
@@ -42,5 +43,5 @@ image comparisons and software smoke results are distinct evidence.
 
 Current desktop build coverage is Windows x64. Linux/macOS and the full target
 architecture matrix must be checked on their respective hosts before claiming
-release support. The four demo READMEs retain their dated visual/reference results;
+release support. The demo READMEs retain their visual/reference results;
 the generated reports describe the most recent local runs.

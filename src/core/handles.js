@@ -35,6 +35,15 @@ export class HandlePool {
     this.#free.push(token.index);
   }
   get size() { return this.#count; }
+  collect(references) {
+    const live=new Set([...references].filter(ref=>this.valid(ref)).map(ref=>ref.index));
+    let count=0;
+    for(let index=0;index<this.#slots.length;++index) {
+      const slot=this.#slots[index];
+      if(slot.alive&&!live.has(index)){this.release({pool:this,index,generation:slot.generation});++count;}
+    }
+    return count;
+  }
   forEach(callback) { for(const slot of this.#slots)if(slot.alive)callback(slot.value); }
   dispose() {
     this.#disposed = true;

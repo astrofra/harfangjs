@@ -7,4 +7,5 @@ DEMOS = {
     'mouse-flight': 'native-game-mouse-flight',
     'engine': 'native-scene-aaa',
     'pbr': 'native-scene-pbr',
+    'instances': 'native-scene-instances',
 }

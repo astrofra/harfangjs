@@ -1,5 +1,6 @@
 export const K_Escape = 'Escape';
 export const K_Space = 'Space';
+export const K_S = 'KeyS', K_D = 'KeyD';
 export const K_Left = 'ArrowLeft';
 export const K_Right = 'ArrowRight';
 export const K_Up = 'ArrowUp';

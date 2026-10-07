@@ -127,7 +127,25 @@ export const GetY = m => m instanceof Mat3 ? new Vec3(...m.data.slice(3,6)) : Ge
 export const GetZ = m => m instanceof Mat3 ? new Vec3(...m.data.slice(6,9)) : GetColumn(m,2);
 export const GetT = m => GetColumn(m, 3);
 export const GetTranslation = GetT;
-export const Clamp = (value,minimum,maximum) => f32(Math.max(f32(minimum),Math.min(f32(maximum),f32(value))));
+export const Clamp = (value,minimum,maximum) => value instanceof Vec3 ?
+  new Vec3(...value.data.map((v,i)=>Clamp(v,minimum.data[i],maximum.data[i]))) :
+  f32(Math.max(f32(minimum),Math.min(f32(maximum),f32(value))));
+export const Mtr = value => f32(value);
+// Native foundation/rand.cpp's xorshf96 sequence; all arithmetic is uint32.
+let randomX=0x75bcd15,randomY=0x159a55e5,randomZ=0x1f123bb5;
+export function Rand(range=32767) {
+  integer(range,0,4294967295,'random range');if(!range)return 0;
+  randomX^=randomX<<16;randomX^=randomX>>>5;randomX^=randomX<<1;
+  const t=randomX;randomX=randomY;randomY=randomZ;randomZ=(t^randomX^randomY)>>>0;
+  return randomZ%range;
+}
+export const FRand = (range=1) => f32(f32(Rand(65536)*f32(range))/65536);
+export const FRRand = (lo=-1,hi=1) => f32(f32(Rand(65536)/65536*f32(f32(hi)-f32(lo)))+f32(lo));
+export function RandomVec3(minimum=-1,maximum=1) {
+  if(minimum instanceof Vec3&&maximum instanceof Vec3)
+    return new Vec3(FRRand(minimum.x,maximum.x),FRRand(minimum.y,maximum.y),FRRand(minimum.z,maximum.z));
+  return new Vec3(FRRand(minimum,maximum),FRRand(minimum,maximum),FRRand(minimum,maximum));
+}
 export class Mat3 {
   constructor(...values) {
     const source=values.length===1&&values[0] instanceof Mat3?values[0].data:
@@ -150,6 +168,10 @@ export function ToEuler(matrix,order=4) {
   const m=matrix.data, cosine=Math.hypot(m[1],m[4]), x=Math.atan2(-m[7],cosine);
   return cosine>1.1920929e-7?new Vec3(x,Math.atan2(m[6],m[8]),Math.atan2(m[1],m[4])):
     new Vec3(x,0,-Math.sign(-m[7])*Math.atan2(-m[2],m[0]));
+}
+export function Mat4LookAt(position,at,scale=Vec3.One) {
+  const rotation=Mat3LookAt(at.sub(position));
+  return new Mat4(...rotation.data,...position.data).mul(ScaleMat4(scale));
 }
 export const TranslationMat4 = p => new Mat4(1, 0, 0, 0, 1, 0, 0, 0, 1, p.x, p.y, p.z);
 export const ScaleMat4 = s => new Mat4(s.x, 0, 0, 0, s.y, 0, 0, 0, s.z, 0, 0, 0);
@@ -200,6 +222,16 @@ export function ComputeOrthographicProjectionMatrix(near, far, size, aspect, off
   projectionArgs(near, far, size, aspect);
   return new Mat44(2 / size / aspect.x, 0, 0, 0, 0, 2 / size / aspect.y, 0, 0, 0, 0,
     2 / (far - near), 0, offset.x, offset.y, -(far + near) / (far - near), 1);
+}
+export class ViewState {
+  constructor() { this.view=Mat4.Identity;this.proj=Mat44.Identity; }
+  get viewProjection() { return this.proj.mul(new Mat44(this.view)); }
+}
+export function ComputePerspectiveViewState(world,fov,near,far,aspect) {
+  requireCondition(world instanceof Mat4,'INVALID_ARGUMENT','Expected camera world Mat4');
+  const [ok,view]=Inverse(world);requireCondition(ok,'INVALID_CAMERA','Singular camera transform');
+  const state=new ViewState();state.view=view;state.proj=ComputePerspectiveProjectionMatrix(near,far,FovToZoomFactor(fov),aspect);
+  return state;
 }
 export function ProjectToClipSpace(projection, point) {
   const p = projection.mul(new Vec4(point.x, point.y, point.z, 1));

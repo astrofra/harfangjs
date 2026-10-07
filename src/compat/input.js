@@ -1,6 +1,27 @@
 import {getHost} from './context.js';
 import {requireCondition} from '../core/errors.js';
 
+export class KeyboardState {
+  constructor(snapshot) {this.keys=new Set(snapshot?.down??[]);}
+  Key(key){return this.keys.has(key);}
+}
+export function ReadKeyboard(name='default') {
+  requireCondition(name==='default','UNSUPPORTED_DEVICE','Only the default browser keyboard is available');
+  return new KeyboardState(getHost().input.keyboard);
+}
+export class Keyboard {
+  constructor(name='default') {
+    requireCondition(name==='default','UNSUPPORTED_DEVICE','Only the default browser keyboard is available');
+    this.name=name;this.current=new KeyboardState();this.previous=new KeyboardState();
+  }
+  Update(){this.previous=this.current;this.current=ReadKeyboard(this.name);}
+  Down(key){return this.current.Key(key);}
+  Pressed(key){return this.Down(key)&&!this.previous.Key(key);}
+  Released(key){return !this.Down(key)&&this.previous.Key(key);}
+  GetState(){return new KeyboardState({down:this.current.keys});}
+  GetOldState(){return new KeyboardState({down:this.previous.keys});}
+}
+
 export class MouseState {
   constructor(snapshot) {this.x=Math.trunc(snapshot?.X()??0);this.y=Math.trunc(snapshot?.Y()??0);this.wheel=Math.trunc(snapshot?.Wheel()??0);this.buttons=new Set(snapshot?.down??[]);}
   X(){return this.x;} Y(){return this.y;} Wheel(){return this.wheel;} HWheel(){return 0;}

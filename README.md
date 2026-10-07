@@ -37,8 +37,9 @@ or localhost for browser integrity checks.
 | Mouse Flight | `mouse-flight` | [Authored scenes, input, instances and HDR](experiments/native-game-mouse-flight/README.md) |
 | Engine | `engine` | [PBR engine scene, normal/ORM maps and shadows](experiments/native-scene-aaa/README.md) |
 | PBR Scene | `pbr` | [PBR materials, transparency and HDR](experiments/native-scene-pbr/README.md) |
+| Scene Instances | `instances` | [20 animated bipeds, actor spawning and teardown](experiments/native-scene-instances/README.md) |
 
-`--demo all` builds all four. `--skip-compiler-build` reuses the existing compiler.
+`--demo all` builds all five. `--skip-compiler-build` reuses the existing compiler.
 Each demo also retains its own `build.py`, `serve.py` and `validate.py`.
 The `native-` names identify the original HARFANG tutorials; these packages run
 client-side. The native JS binding itself belongs to the sibling HARFANG project.
@@ -68,7 +69,7 @@ for the manifest fields and `--compression none` option.
 - `src/`: browser API, compiled-asset loader, scene model and WebGL rendering.
 - `tools/native/`: native asset compiler, image/probe processing and shader adapters.
 - `tools/`: Python build, package and validation orchestration.
-- `experiments/`: the four working Web demos and their regression checks.
+- `experiments/`: the five working Web demos and their regression checks.
 - `build/`: generated compiler inputs, binaries, assets and validation reports.
 - `dist/`: standalone static Web packages.
 

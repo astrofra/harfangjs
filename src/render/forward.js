@@ -1,9 +1,11 @@
 import {requireCondition} from '../core/errors.js';
-import {Color} from '../core/math.js';
+import {Color,Inverse} from '../core/math.js';
 import {selectLights} from './lights.js';
 
 export function frameLighting(scene, view) {
-  const env = scene.environment, camera = scene.GetCurrentCamera().GetTransform().GetWorld().data;
+  const env = scene.environment, [ok,world] = Inverse(view);
+  requireCondition(ok,'INVALID_CAMERA','Singular view matrix');
+  const camera=world.data;
   requireCondition(env.ambient instanceof Color && env.fog_color instanceof Color && env.ambient.data.every(Number.isFinite) && env.fog_color.data.every(Number.isFinite) &&
     Number.isFinite(env.fog_near) && Number.isFinite(env.fog_far) && env.fog_far >= env.fog_near,
     'INVALID_ENVIRONMENT', 'Invalid ambient color or fog range');

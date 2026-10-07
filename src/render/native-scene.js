@@ -5,8 +5,10 @@ import {LT_Linear,LT_Spot} from '../scene/scene.js';
 import {frameLighting,applyMaterialState,transparentDepth} from './forward.js';
 
 // Same split construction and texel stabilization as GenerateLinearShadowMapForForwardPipeline.
-export function directionalShadowMatrices(scene,lightNode,projection,resolution) {
-  const camera=scene.GetCurrentCamera(),world=camera.GetTransform().GetWorld(),near=camera.GetCamera().GetZNear();
+export function directionalShadowMatrices(scene,lightNode,projection,resolution,viewState) {
+  const camera=viewState?undefined:scene.GetCurrentCamera();
+  const world=viewState?Inverse(viewState.view)[1]:camera.GetTransform().GetWorld();
+  const near=viewState?-projection.data[14]/(projection.data[10]+1):camera.GetCamera().GetZNear();
   const lightWorld=lightNode.GetTransform().GetWorld(),lightInverse=Inverse(lightWorld)[1],splits=lightNode.GetLight().GetPSSMSplit().data;
   const [ok,inverseProjection]=Inverse(projection);requireCondition(ok,'INVALID_CAMERA','Singular camera projection');
   const corners=[];
@@ -80,10 +82,10 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_COMPARE_MODE,gl.COMPARE_REF_TO_TEXTURE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_COMPARE_FUNC,gl.LEQUAL);
     this.stats.gpuBytes+=30;
   }
-  submit(scene,pipeline) {
+  submit(scene,pipeline,viewState) {
     this.alive();requireCondition(this.program?.adapter.startsWith('pbr-scene-instanced/'),'PROGRAM_NOT_READY','Load a compiled PBR program first');
     this.collect(scene);this.fallbackTextures();
-    const gl=this.gl,{view,proj,viewProjection}=scene.ComputeCurrentCameraViewState(ComputeAspectRatioX(this.canvas.width,this.canvas.height));
+    const gl=this.gl,{view,proj,viewProjection}=viewState??scene.ComputeCurrentCameraViewState(ComputeAspectRatioX(this.canvas.width,this.canvas.height));
     const opaque=[],transparent=[];
     for(const batch of this.batches.values()) {
       if(batch.transparent) {
@@ -99,7 +101,7 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
       'UNSUPPORTED_SHADOW','Only the highest-priority local spotlight may cast shadows');
     const spot=shadowLocals[0]?.GetLight();let spotMatrix=Mat44.Identity;
     const light=directional?.GetLight().GetShadowType()===1?directional.GetLight():undefined;
-    const matrices=light?directionalShadowMatrices(scene,directional,proj,pipeline.resolution):Array(4).fill(Mat44.Identity);
+    const matrices=light?directionalShadowMatrices(scene,directional,proj,pipeline.resolution,viewState):Array(4).fill(Mat44.Identity);
     Object.assign(this.stats,{drawCalls:0,opaqueDrawCalls:0,transparentDrawCalls:0,shadowDrawCalls:0,triangles:0,shadowTriangles:0,shadowPasses:(light?4:0)+(spot?1:0),shadowAtlasSize:light?pipeline.resolution*2:0});
     if(light) {
       this.ensureShadow({resolution:pipeline.resolution*2,sixteenBit:pipeline.sixteenBit});this.stats.shadowResolution=pipeline.resolution;

@@ -22,7 +22,7 @@ export function requireCapabilities(required, source = 'application') {
 
 export function validateLogicalPath(id) {
   requireCondition(typeof id === 'string' && id.length > 0 &&
-    !/[\\:%?#\u0000-\u0020]/.test(id) && id.split('/').every(p => p && p !== '.' && p !== '..'),
+    !/[\\:%?#\u0000-\u001f\u007f]/.test(id) && id.split('/').every(p => p && p === p.trim() && p !== '.' && p !== '..'),
   'INVALID_ASSET_PATH', 'Expected a relative compiled logical path without traversal or URL syntax', String(id));
   return id;
 }

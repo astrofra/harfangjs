@@ -171,10 +171,10 @@ export class InstancedForwardRenderer {
     if(shadow.accounted) this.stats.gpuBytes-=shadow.bytes;
     this[slot]=undefined; this.stats.shadowMaps=[this.shadow,this.spotShadow].filter(v=>v?.accounted).length; this.stats.shadowResolution=0;
   }
-  submit(scene,pipeline) {
+  submit(scene,pipeline,viewState) {
     this.alive(); requireCondition(this.forward,'PROGRAM_NOT_READY','Load a compiled forward program first');
     this.collect(scene);
-    const gl=this.gl, {view,viewProjection}=scene.ComputeCurrentCameraViewState(ComputeAspectRatioX(this.canvas.width,this.canvas.height));
+    const gl=this.gl, {view,viewProjection}=viewState??scene.ComputeCurrentCameraViewState(ComputeAspectRatioX(this.canvas.width,this.canvas.height));
     const frame=frameLighting(scene,view);
     const lights=scene.GetLights().filter(n=>n.IsEnabled()), local=lights.filter(n=>n.GetLight().GetType()!==LT_Linear)
       .sort((a,b)=>b.GetLight().GetPriority()-a.GetLight().GetPriority());

@@ -4,7 +4,7 @@ import {Vec3, Vec4, Color, Deg, Mat4, Mat44, Inverse, TransformationMat4, FovToZ
 import {profile} from '../profile.js';
 import {Material} from '../render/materials.js';
 import {time_from_ns} from '../core/time.js';
-import {GetSceneAnimInfo,InvalidSceneAnimRef} from './animation.js';
+import {GetSceneAnimInfo,InvalidSceneAnimRef,removeAnimations} from './animation.js';
 
 const handles = new WeakMap();
 const destructionObservers = new WeakMap();
@@ -131,6 +131,7 @@ export class Node extends Handle {
   SetInstance(instance) { const v=value(this);v.instance=token(instance,v.instances); }
   IsInstantiatedBy() { const v=value(this);return new Node(v.nodes,v.instanceOwner); }
   GetInstanceSceneView() { return value(this).instanceView??new SceneView([]); }
+  DestroyInstance() { destroyInstanceContent(value(this)); }
   GetInstanceSceneAnim(name) {
     requireCondition(typeof name==='string','INVALID_ARGUMENT','Expected animation name');
     const v=value(this);
@@ -140,6 +141,14 @@ export class Node extends Handle {
   IsItselfEnabled() { return value(this).enabled; }
   Enable() { value(this).enabled = true;if(this.IsEnabled())setInstanceEnabled(this,true); }
   Disable() { value(this).enabled = false;setInstanceEnabled(this,false); }
+}
+function destroyInstanceContent(state) {
+  const children=state.instanceView?.GetNodes();if(!children)return;
+  state.instanceView=undefined;
+  removeAnimations(state.animationScene,state.instanceAnimations??[]);state.instanceAnimations=[];
+  for(let i=0;i<children.length;++i) {
+    const child=children.get(i);if(child.IsValid())state.animationScene.DestroyNode(child);
+  }
 }
 function setInstanceEnabled(root,enabled) {
   const children=value(root).instanceView?.GetNodes();
@@ -243,6 +252,7 @@ export class Scene {
   #cameras = new HandlePool(); #objects = new HandlePool(); #currentCamera;
   #lights = new HandlePool();
   #instances = new HandlePool();
+  #orphanInstances = [];
   #owned = [];
   #order = [];
   #nodeWrappers;
@@ -276,6 +286,8 @@ export class Scene {
   GetAllNodeCount() { this.#assertAlive(); return BigInt(this.#nodes.size); }
   DestroyNode(node) {
     const ref = token(node, this.#nodes);
+    const state=this.#nodes.get(ref);
+    if(state.instanceView)this.#orphanInstances.push(state);
     try { notifyDestruction(ref); }
     finally {
       if (this.#nodes.valid(ref)) this.#nodes.release(ref);
@@ -326,6 +338,17 @@ export class Scene {
   DestroyLight(light) { this.#lights.release(token(light,this.#lights)); }
   CreateInstance(path='') { this.#assertAlive();return new Instance(this.#instances,this.#instances.allocate({path})); }
   DestroyInstance(instance) { this.#instances.release(token(instance,this.#instances)); }
+  GarbageCollect() {
+    this.#assertAlive();let count=0;
+    // Native DestroyNode leaves instance views until garbage collection.
+    while(this.#orphanInstances.length) {
+      const before=this.#nodes.size;destroyInstanceContent(this.#orphanInstances.pop());count+=before-this.#nodes.size;
+    }
+    for(const [key,pool] of [['transform',this.#transforms],['camera',this.#cameras],['object',this.#objects],['light',this.#lights],['instance',this.#instances]]) {
+      const references=[];this.#nodes.forEach(state=>references.push(state[key]));count+=pool.collect(references);
+    }
+    return BigInt(count);
+  }
   GetLights() {
     this.#assertAlive(); const result=[];
     for(const ref of this.#order) if(this.#nodes.valid(ref) && this.#lights.valid(this.#nodes.get(ref).light)) result.push(new Node(this.#nodes,ref));
@@ -363,6 +386,7 @@ export class Scene {
   }
   Clear() {
     this.#assertAlive();
+    this.#orphanInstances.length=0;
     const errors = [];
     for (const ref of [...this.#order]) { try { notifyDestruction(ref); } catch (e) { errors.push(e); } }
     this.#nodes.dispose(); this.#transforms.dispose(); this.#cameras.dispose(); this.#objects.dispose(); this.#lights.dispose();this.#instances.dispose();
@@ -375,6 +399,7 @@ export class Scene {
   get stats() { return {nodes: this.#nodes.size, transforms: this.#transforms.size, cameras: this.#cameras.size, objects: this.#objects.size, lights:this.#lights.size}; }
   dispose() {
     if (this.#disposed) return;
+    this.#orphanInstances.length=0;
     this.#disposed = true;
     const errors = [];
     for (const ref of [...this.#order]) { try { notifyDestruction(ref); } catch (e) { errors.push(e); } }

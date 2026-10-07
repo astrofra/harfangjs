@@ -56,3 +56,9 @@ The Engine demo plays its authored mechanical animation. AAA calls still use the
 warned forward rendering fallback. Global environment
 probes are supported; parallax-corrected probes are rejected. See each demo's
 README for its actual rendering scope and validation evidence.
+
+Scene Instances uses `ComputePerspectiveViewState` and `Mat4LookAt` to submit a
+camera independent of the scene's current-camera node. `Node.DestroyInstance()`
+invalidates instance content and animations while keeping the root/component;
+`Scene.GarbageCollect()` releases unreferenced node components. `Keyboard` follows
+native Update/Down/Pressed/Released snapshots, including S/D actor controls.
