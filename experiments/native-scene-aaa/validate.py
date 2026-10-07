@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import threading
 from build import build, digest, ROOT, NATIVE, WORK, DIST, EXPERIMENT
+from asset_validation import read_asset
 
 spec = importlib.util.spec_from_file_location('many_validation', ROOT / 'experiments/native-scene-many-nodes/validate.py')
 common = importlib.util.module_from_spec(spec)
@@ -43,7 +44,7 @@ def compiler_checks():
         for name, entry in metadata['assets'].items():
             if entry['kind'] == 'texture' and name.endswith('.png'):
                 assert max(entry['levels'][0]['width'], entry['levels'][0]['height']) <= 1024
-        checks.append('PNG texture limit applied by assetc-web with original filenames')
+        checks.append('PNG texture limit applied by assetc-web with original logical paths')
         failure = run(['--max-texture-size', '1024'], False)
         assert '--animation-stubs' in failure.stderr
         checks.append('animation tracks require explicit stub opt-in')
@@ -57,7 +58,7 @@ def compiler_checks():
         assert 'Parallax' in failure.stderr
         assert (output / 'manifest.json').read_bytes() == manifest
         for name, entry in metadata['assets'].items():
-            assert digest(output / name) == entry['sha256']
+            read_asset(output / entry['uri'], entry)
         checks.append('unsupported probe rejects and preserves the previous complete output')
     return checks
 
@@ -231,9 +232,10 @@ def main():
     manifest = json.loads((DIST / 'resources_compiled/manifest.json').read_text())
     assert manifest['animationPlayback'] == 'stub'
     for name, entry in manifest['assets'].items():
-        assert name == entry['uri'] and digest(DIST / 'resources_compiled' / name) == entry['sha256']
+        assert entry['uri'] == name + '.lz4'
+        read_asset(DIST / 'resources_compiled' / entry['uri'], entry)
     original = json.loads((NATIVE / 'tutorials/resources/car_engine/engine.scn').read_text())
-    compiled = json.loads((DIST / 'resources_compiled/car_engine/engine.scn').read_text())
+    compiled = json.loads(read_asset(DIST / 'resources_compiled' / manifest['assets']['car_engine/engine.scn']['uri'], manifest['assets']['car_engine/engine.scn']))
     assert original == compiled, 'Scene content must survive compilation, including animation tracks'
     assert (NATIVE / 'tutorials/scene_aaa.js').read_bytes() == (DIST / 'scene_aaa.js').read_bytes()
     compiler = compiler_checks()

@@ -65,7 +65,7 @@ static void publish(const fs::path &output,const AssetOutputs &compiled,const js
   if(saved){owned(backup);fs::remove_all(backup);}
 }
 static int run(const std::vector<std::string> &args) {
-  bool quiet=false,verbose=false,progress=false,animation_stubs=false;
+  bool quiet=false,verbose=false,progress=false,animation_stubs=false,compress=true;
   unsigned max_texture_size=0;
   std::vector<fs::path> paths;
   for(size_t i=0;i<args.size();++i) {
@@ -76,12 +76,17 @@ static int run(const std::vector<std::string> &args) {
         "-q/-quiet -v/-verbose -progress -j/-job N -l/-log_errors_to_stderr\n"
         "--animation-stubs: preserve animation data without Web playback\n"
         "--max-texture-size N: resize PNG/JPEG before mip generation (default: original size)\n"
+        "--compression lz4|none: lossless asset transport (default: LZ4 HC level 12)\n"
         "Fixed WebGL 2 target; unsupported options/content fail.\n"; return 0;
     } else if(arg=="-q" || arg=="-quiet") quiet=true;
     else if(arg=="-v" || arg=="-verbose") verbose=true;
     else if(arg=="-progress") progress=true;
     else if(arg=="-l" || arg=="-log_errors_to_stderr") {}
     else if(arg=="--animation-stubs")animation_stubs=true;
+    else if(arg=="--compression") {
+      check(++i<args.size()&&(args[i]=="lz4"||args[i]=="none"),"Expected compression lz4 or none");
+      compress=args[i]=="lz4";
+    }
     else if(arg=="--max-texture-size") {
       check(++i<args.size()&&!args[i].empty()&&args[i].find_first_not_of("0123456789")==std::string::npos,"Expected texture size");
       max_texture_size=unsigned(std::stoul(args[i]));
@@ -114,7 +119,7 @@ static int run(const std::vector<std::string> &args) {
     check(sha256(lf(bytes))==it.value().get<std::string>(),"Unreviewed shader source: "+it.key()+"; update the Web adapter and its provenance first");
     source_hashes[it.key()]=sha256(bytes);
   }
-  AssetOutputs compiled;std::vector<std::pair<std::string,std::string>> inputs;
+  AssetOutputs compiled;compiled.compress=compress;std::vector<std::pair<std::string,std::string>> inputs;
   for(const auto &entry:fs::recursive_directory_iterator(source)) {
     check(!entry.is_symlink(),"Symbolic links are unsupported in compiler inputs");
     if(!entry.is_regular_file())continue;

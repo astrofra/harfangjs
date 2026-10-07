@@ -2,10 +2,13 @@ import {integer,requireCondition} from '../core/errors.js';
 import {validateLogicalPath} from '../profile.js';
 import {profile} from '../profile.js';
 import {validateSceneJSON} from '../scene/schema.js';
+import {decodeLZ4Block} from './lz4.js';
 
 export async function loadProgramAssets(manifestURL, signal, onProgress=()=>{}, maxAssetBytes=profile.limits.maxGPUBytes) {
   integer(maxAssetBytes,1,536870912,'asset byte budget');
   const url=new URL(manifestURL,document.baseURI);
+  const storedLength=entry=>entry.compression==='lz4-block'?entry.storedByteLength:entry.byteLength;
+  const sha256=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');
   let loadedBytes=0,totalBytes=0,loadedAssets=0,totalAssets=0,failed=false;
   const notify=phase=>{
     if(!failed)onProgress({phase,loadedBytes,totalBytes,loadedAssets,totalAssets,
@@ -17,9 +20,9 @@ export async function loadProgramAssets(manifestURL, signal, onProgress=()=>{}, 
     const response=await fetch(target,{signal,cache:'no-store'});
     requireCondition(response.ok,'ASSET_FETCH_FAILED',`${response.status}: ${target}`);
     if(entry&&response.body) {
-      // Manifest sizes describe decoded payloads, so gzip/Brotli do not distort
-      // progress. Count stream chunks, including partially downloaded textures.
-      const reader=response.body.getReader(),data=new Uint8Array(entry.byteLength);
+      // Fetch removes HTTP content encoding. Count stored asset bytes here;
+      // LZ4 decoding happens after download and does not inflate progress.
+      const reader=response.body.getReader(),data=new Uint8Array(storedLength(entry));
       let offset=0,finished=false;
       try {
         while(true) {
@@ -38,7 +41,7 @@ export async function loadProgramAssets(manifestURL, signal, onProgress=()=>{}, 
     const data=await response.arrayBuffer();
     requireCondition(data.byteLength<=profile.limits.maxResourceBytes,'ASSET_BUDGET','Program payload is too large');
     if(entry) {
-      requireCondition(data.byteLength===entry.byteLength,'ASSET_INTEGRITY',`Corrupt ${entry.kind}: ${target}`);
+      requireCondition(data.byteLength===storedLength(entry),'ASSET_INTEGRITY',`Corrupt ${entry.kind}: ${target}`);
       loadedBytes+=data.byteLength;notify('assets');
     }
     return data;
@@ -51,19 +54,31 @@ export async function loadProgramAssets(manifestURL, signal, onProgress=()=>{}, 
   const programs=new Map(),scenes=new Map(),geometries=new Map(),textures=new Map();
   const entries=Object.entries(manifest.assets);totalAssets=entries.length;
   // Validate all sizes before starting payload requests or allocating buffers.
+  let decodedBytes=0;
   for(const [id,entry] of entries) {
     validateLogicalPath(id); validateLogicalPath(entry.uri);
     requireCondition((entry.kind==='program'||sceneProfile&&['scene','geometry','texture'].includes(entry.kind)) && /^[a-f0-9]{64}$/.test(entry.sha256) && Number.isSafeInteger(entry.byteLength) && entry.byteLength>0 &&
       Array.isArray(entry.dependencies) && entry.dependencies.every(dep=>Object.hasOwn(manifest.assets,dep)),
       'INVALID_MANIFEST',`Invalid program entry: ${id}`);
-    totalBytes+=entry.byteLength;
+    requireCondition(entry.compression===undefined||entry.compression==='lz4-block','ASSET_COMPRESSION',`Unsupported compression: ${id}`);
+    if(entry.compression==='lz4-block') {
+      requireCondition(Number.isSafeInteger(entry.storedByteLength)&&entry.storedByteLength>0&&entry.storedByteLength<entry.byteLength&&
+        /^[a-f0-9]{64}$/.test(entry.storedSha256),'INVALID_MANIFEST',`Invalid compressed asset: ${id}`);
+    } else {
+      requireCondition(entry.storedByteLength===undefined&&entry.storedSha256===undefined,'INVALID_MANIFEST',`Unexpected storage metadata: ${id}`);
+    }
+    totalBytes+=storedLength(entry);decodedBytes+=entry.byteLength;
     requireCondition(entry.byteLength<=profile.limits.maxResourceBytes,'ASSET_BUDGET','Program payload is too large');
-    requireCondition(totalBytes<=maxAssetBytes,'ASSET_BUDGET',`Compiled asset bundle exceeds ${maxAssetBytes/1048576} MiB`);
+    requireCondition(decodedBytes<=maxAssetBytes,'ASSET_BUDGET',`Compiled asset bundle exceeds ${maxAssetBytes/1048576} MiB`);
   }
   notify('assets');
   const loadAsset=async ([id,entry])=>{
-    const bytes=await fetchBytes(new URL(entry.uri,url),entry);
-    const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(v=>v.toString(16).padStart(2,'0')).join('');
+    let bytes=await fetchBytes(new URL(entry.uri,url),entry);
+    if(entry.compression==='lz4-block') {
+      requireCondition(await sha256(bytes)===entry.storedSha256,'ASSET_INTEGRITY',`Corrupt compressed ${entry.kind}: ${id}`);
+      bytes=decodeLZ4Block(new Uint8Array(bytes),entry.byteLength);
+    }
+    const digest=await sha256(bytes);
     requireCondition(bytes.byteLength===entry.byteLength && digest===entry.sha256,'ASSET_INTEGRITY',`Corrupt ${entry.kind}: ${id}`);
     if(entry.kind==='texture') {
       requireCondition(['rgba8','rgba16f'].includes(entry.format)&&[1,6].includes(entry.faces)&&Number.isInteger(entry.mips)&&entry.mips>=1&&entry.mips<=13&&

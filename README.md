@@ -58,6 +58,10 @@ Applications import `harfang`; browser startup imports `harfang/browser`.
 `createNativeBrowserApplication` and `runWindow`. Browser startup downloads and
 validates the compiled manifest and payloads before entering application code.
 Supported native-style asset calls then use these preloaded resources.
+Compiled payloads use LZ4 HC transport compression by default, decoded locally
+in JavaScript; static hosting needs no compression configuration. The loader
+also accepts older uncompressed assets. See [asset compilation](docs/assets.md)
+for the manifest fields and `--compression none` option.
 
 ## Repository layout
 

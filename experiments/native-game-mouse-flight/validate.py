@@ -14,6 +14,7 @@ import tempfile
 import subprocess
 import threading
 from build import build, digest, ROOT, NATIVE, WORK, DIST, EXPERIMENT
+from asset_validation import read_asset
 
 spec = importlib.util.spec_from_file_location('many_nodes_validation', ROOT / 'experiments/native-scene-many-nodes/validate.py')
 common = importlib.util.module_from_spec(spec)
@@ -34,17 +35,17 @@ def compiler_checks():
         run();manifest=(output/'manifest.json').read_bytes();run();assert manifest==(output/'manifest.json').read_bytes()
         checks+=['native standalone scene compiler, Unicode paths','deterministic image/HDR/geometry compilation']
         for logical_id,entry in json.loads(manifest)['assets'].items():
-            assert entry['uri']==logical_id
-            payload=output/entry['uri'];assert digest(payload)==entry['sha256'] and payload.stat().st_size==entry['byteLength']
+            assert entry['uri']==logical_id+'.lz4'
+            read_asset(output/entry['uri'],entry)
         checks.append('all compiled payload sizes and hashes')
         assert not (output/'objects').exists()
-        checks.append('original paths and filenames for every compiled asset')
+        checks.append('native logical paths with binary .lz4 storage')
         scene=source/'playground/playground.scn';original=scene.read_bytes()
         updated=json.loads(original);updated['transforms'][0]['pos'][1]+=1
         scene.write_text(json.dumps(updated),encoding='utf-8');run()
-        assert json.loads((output/'playground/playground.scn').read_bytes())['transforms'][0]['pos']==updated['transforms'][0]['pos']
         changed=json.loads((output/'manifest.json').read_bytes())['assets']['playground/playground.scn']
-        assert changed['uri']=='playground/playground.scn' and changed['sha256']!=json.loads(manifest)['assets']['playground/playground.scn']['sha256']
+        assert json.loads(read_asset(output/changed['uri'],changed))['transforms'][0]['pos']==updated['transforms'][0]['pos']
+        assert changed['uri']=='playground/playground.scn.lz4' and changed['sha256']!=json.loads(manifest)['assets']['playground/playground.scn']['sha256']
         scene.write_bytes(original);run();assert (output/'manifest.json').read_bytes()==manifest
         checks.append('changed scene recompiles at the same path and restores deterministically')
         def reject(name,alter,label):
@@ -53,7 +54,7 @@ def compiler_checks():
             else:path.write_bytes(new)
             try:
                 run(False);assert manifest==(output/'manifest.json').read_bytes()
-                for entry in json.loads(manifest)['assets'].values():assert digest(output/entry['uri'])==entry['sha256']
+                for entry in json.loads(manifest)['assets'].values():read_asset(output/entry['uri'],entry)
             finally:path.write_bytes(old)
             checks.append(label)
         reject('paper_plane/Shape.geo',lambda _:b'HGFF','truncated geometry fails before publication')

@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 import threading
 from build import build, digest, ROOT, NATIVE, WORK, DIST
+from asset_validation import read_asset
 
 spec = importlib.util.spec_from_file_location('many_validation', ROOT / 'experiments/native-scene-many-nodes/validate.py')
 common = importlib.util.module_from_spec(spec)
@@ -50,12 +51,12 @@ def compiler_checks():
         metadata = json.loads((output / 'manifest.json').read_text())['assets'][texture]
         original = json.loads((WORK / 'resources_compiled/manifest.json').read_text())['assets'][texture]
         assert metadata == original
-        assert metadata['uri'] == texture and metadata['format'] == 'rgba8'
+        assert metadata['uri'] == texture + '.lz4' and metadata['format'] == 'rgba8'
         assert metadata['sourceCompression'] == 'BC5' and metadata['sourceTextureType'] == 'NormalMap'
         assert metadata['levels'][0]['width'] == 2048 and metadata['mips'] == 12
-        assert digest(output / texture) == metadata['sha256']
+        read_asset(output / metadata['uri'], metadata)
         assert (source / texture).read_bytes()[:2] == b'\xff\xd8'
-        assert (output / texture).read_bytes()[:2] != b'\xff\xd8'
+        assert (output / metadata['uri']).read_bytes()[:2] != b'\xff\xd8'
         checks.append('JPEG decoded offline to deterministic RGBA8 mipmaps; name and source metadata preserved')
         run(['--max-texture-size', '512'], True)
         manifest = (output / 'manifest.json').read_bytes()
@@ -67,7 +68,7 @@ def compiler_checks():
         assert 'JPEG header' in result.stderr
         assert (output / 'manifest.json').read_bytes() == manifest
         for name, entry in json.loads(manifest)['assets'].items():
-            assert digest(output / name) == entry['sha256']
+            read_asset(output / entry['uri'], entry)
         checks.append('truncated JPEG rejected; previous complete output preserved')
     return checks
 
@@ -234,8 +235,9 @@ def main():
     REPORTS.mkdir(parents=True, exist_ok=True)
     manifest = json.loads((DIST / 'resources_compiled/manifest.json').read_text())
     for name, entry in manifest['assets'].items():
-        assert name == entry['uri'] and digest(DIST / 'resources_compiled' / name) == entry['sha256']
-    assert json.loads((NATIVE / 'tutorials/resources/materials/materials.scn').read_text()) == json.loads((DIST / 'resources_compiled/materials/materials.scn').read_text())
+        assert entry['uri'] == name + '.lz4'
+        read_asset(DIST / 'resources_compiled' / entry['uri'], entry)
+    assert json.loads((NATIVE / 'tutorials/resources/materials/materials.scn').read_text()) == json.loads(read_asset(DIST / 'resources_compiled' / manifest['assets']['materials/materials.scn']['uri'], manifest['assets']['materials/materials.scn']))
     assert (NATIVE / 'tutorials/scene_pbr.js').read_bytes() == (DIST / 'scene_pbr.js').read_bytes()
     compiler = compiler_checks()
     native = native_reference(args.native.resolve(), args.assetc.resolve()) if args.native else None

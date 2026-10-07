@@ -19,6 +19,7 @@ import threading
 import zlib
 
 from build import build, digest, ROOT, NATIVE, WORK, DIST, EXPERIMENT
+from asset_validation import read_asset
 
 REPORTS = WORK / 'reports'
 
@@ -46,11 +47,10 @@ def compiler_checks():
         run(source, output, '-j', '2', '-q')
         manifest = json.loads((output / 'manifest.json').read_text())
         asset = manifest['assets']['core/shader/default.hps']; payload = output / asset['uri']
-        assert asset['uri']=='core/shader/default.hps' and not (output/'objects').exists()
-        assert asset['sha256'] == digest(payload) and asset['byteLength'] == payload.stat().st_size
-        program = json.loads(payload.read_text())
+        assert asset['uri']=='core/shader/default.hps.lz4' and not (output/'objects').exists()
+        program = json.loads(read_asset(payload, asset))
         assert program['sourceHashes'] == {p.relative_to(source).as_posix(): digest(p) for p in source.rglob('*') if p.is_file()}
-        checks += ['spaces/unicode paths', 'SHA256 and size verified independently', 'source dependency provenance', 'original asset path and filename preserved']
+        checks += ['spaces/unicode paths', 'SHA256 and size verified independently', 'source dependency provenance', 'native logical path preserved with binary .lz4 storage']
         before = (output / 'manifest.json').read_bytes()
         run('-v', source, output); assert before == (output / 'manifest.json').read_bytes()
         checks.append('deterministic repeat build')
@@ -189,8 +189,8 @@ def main():
     for name, expected in release['files'].items():
         assert digest(DIST / name) == expected, name
         assert Path(name).suffix not in ('.wasm', '.exe', '.dll', '.py', '.sc', '.sh'), name
-        if Path(name).suffix=='.hps':
-            assert name in compiled_paths and json.loads((DIST/name).read_text())['schema']=='harfang-web-program/1',name
+        if name.endswith(('.hps', '.hps.lz4')):
+            assert name in compiled_paths and json.loads(read_asset(DIST/name, next(e for e in asset_manifest['assets'].values() if 'resources_compiled/'+e['uri']==name)))['schema']=='harfang-web-program/1',name
     from playwright.sync_api import sync_playwright
     httpd = ThreadingHTTPServer(('127.0.0.1', 0), partial(QuietHandler, directory=str(DIST)))
     threading.Thread(target=httpd.serve_forever, daemon=True).start()

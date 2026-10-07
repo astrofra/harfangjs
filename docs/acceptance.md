@@ -14,6 +14,7 @@ one demo; `--skip-build` validates the existing packages.
 
 | Suite | Main checks |
 | --- | --- |
+| Compression | Upstream LZ4 vectors, malformed blocks, compressed/raw/mixed loading, stored/decoded hashes, decoded budgets, progress and corrupt-package rollback |
 | Many Nodes | Compiler determinism/rejection, native API fixture, instancing/shadows, input/lifecycle, resource cleanup, corrupt assets and network boundaries |
 | Mouse Flight | Scene/instance compilation, HDR, input/camera updates, native API fixture and cleanup |
 | Engine | PBR maps, scene instances, shadow passes, explicit animation/AAA stubs, texture budgets and lifecycle |
@@ -24,6 +25,11 @@ Reports and screenshots are written under
 an external native HG JS executable and native asset compiler for reference
 comparisons. These tools are only test oracles; they are not needed to build or
 serve the Web packages.
+
+The compression suite runs with `all` or `many-nodes`. After building Many Nodes,
+it can also run directly with `python tools/validate_compression.py`; its report
+is `build/reports/compression.json`. Python LZ4 is a validation dependency only;
+compiler builds, packaging and browser execution do not require it.
 
 The Many Nodes validator accepts `--browser PATH` and `--software` for a
 SwiftShader smoke run. Other validators share its browser discovery. Hardware

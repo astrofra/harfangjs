@@ -8,16 +8,34 @@
 #include <map>
 #include <thread>
 #include <regex>
+#include <lz4hc.h>
 
 struct AssetOutputs {
+  bool compress=true;
   json assets=json::object();
   std::map<std::string,std::string> objects;
   void add(const std::string &id,const std::string &kind,const std::string &bytes,json attributes=json::object()) {
-    // Keep native logical paths on disk as well, including source extensions.
-    const auto hash=sha256(bytes), uri=id;
-    attributes["kind"]=kind; attributes["uri"]=uri; attributes["sha256"]=hash;
+    // Logical paths stay native; compressed storage has an explicit binary
+    // extension so FTP clients do not treat extensionless shaders as text.
+    const auto hash=sha256(bytes);std::string uri=id;
+    attributes["kind"]=kind; attributes["sha256"]=hash;
     attributes["byteLength"]=bytes.size(); if(!attributes.contains("dependencies"))attributes["dependencies"]=json::array();
-    assets[id]=attributes;objects[uri]=bytes;
+    // One independent raw LZ4 block per asset. The manifest supplies framing:
+    // stored size/hash plus decoded size/hash, without changing logical paths.
+    std::string stored=bytes;
+    if(compress) {
+      check(bytes.size()<=LZ4_MAX_INPUT_SIZE,"Asset exceeds LZ4 input limit: "+id);
+      std::string packed(size_t(LZ4_compressBound(int(bytes.size()))),'\0');
+      const auto size=LZ4_compress_HC(bytes.data(),packed.data(),int(bytes.size()),int(packed.size()),LZ4HC_CLEVEL_MAX);
+      check(size>0,"LZ4 compression failed: "+id);
+      if(size_t(size)<bytes.size()) {
+        packed.resize(size_t(size));stored=std::move(packed);
+        attributes["compression"]="lz4-block";
+        uri+=".lz4";
+        attributes["storedByteLength"]=stored.size();attributes["storedSha256"]=sha256(stored);
+      }
+    }
+    attributes["uri"]=uri;assets[id]=attributes;objects[uri]=std::move(stored);
   }
 };
 struct GeometryReader {

@@ -29,10 +29,23 @@ def package_assets(source, target):
     payloads = {}
     for logical_id, entry in manifest['assets'].items():
         relative = PurePosixPath(entry['uri'])
-        if entry['uri'] != logical_id or relative.is_absolute() or '..' in relative.parts or '\\' in logical_id or ':' in logical_id:
+        allowed = {logical_id}
+        if entry.get('compression') == 'lz4-block':
+            allowed.add(logical_id + '.lz4')
+        if entry['uri'] not in allowed or relative.is_absolute() or '..' in relative.parts or '\\' in logical_id or ':' in logical_id:
             raise ValueError(f'Expected a relative original asset path: {logical_id}')
         data = (source / relative).read_bytes()
-        if len(data) != entry['byteLength'] or hashlib.sha256(data).hexdigest() != entry['sha256']:
+        if entry.get('compression') == 'lz4-block':
+            size, checksum = entry['storedByteLength'], entry['storedSha256']
+            if not isinstance(size, int) or not 0 < size < entry['byteLength']:
+                raise ValueError(f'Invalid compressed asset size: {logical_id}')
+        elif 'compression' in entry or 'storedByteLength' in entry or 'storedSha256' in entry:
+            raise ValueError(f'Unsupported asset storage: {logical_id}')
+        else:
+            size, checksum = entry['byteLength'], entry['sha256']
+        # Verify the exact published bytes. The browser also verifies the
+        # decoded hash; packaging requires no Python compression dependency.
+        if len(data) != size or hashlib.sha256(data).hexdigest() != checksum:
             raise ValueError(f'Corrupt compiled asset: {logical_id}')
         payloads[relative] = data
     if target.exists():

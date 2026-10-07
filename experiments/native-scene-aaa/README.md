@@ -33,6 +33,11 @@ Use the packaged `js/window.js`. Its browser implementation is:
 export {runWindow} from 'harfang/browser';
 ```
 
+Transfer compiled assets in **binary mode** over FTP. Their `.lz4` extension
+marks binary transport files; logical scene/material paths are unchanged.
+Replace `resources_compiled/manifest.json` together with its referenced files.
+An `ASSET_INTEGRITY` error can indicate an incomplete or text-mode upload.
+
 The `js/window.js` in `harfang3d/tutorials/` is the native helper and imports
 `harfang-host`, a module supplied by the native executable. Uploading that helper
 causes the browser's **bare specifier `harfang-host` was not remapped** error.
@@ -61,7 +66,11 @@ Only compiled PNG textures are resized; source files are untouched. Twelve
 2048-square textures would exceed the current 128 MiB budget in portable RGBA8.
 Native BC3 metadata is reported and converted to RGBA8; the manifest records both
 the source compression request and the actual format. The 1024 limit produces
-about 118.4 MiB of compiled payloads and 90.8 MiB of tracked GPU resources.
+about 118.4 MiB of decoded payloads and 90.8 MiB of tracked GPU resources.
+Default LZ4 HC transport compression reduces the packaged asset payloads to
+about 31.1 MiB (74% smaller), including scenes, geometry, textures and probes.
+The browser decompresses them in JavaScript without server configuration or
+WASM. This reduces transfer size; decoded/GPU memory budgets are unchanged.
 The original 11-square logo remains 11-square.
 
 The compiler's default keeps original texture dimensions. This experiment's

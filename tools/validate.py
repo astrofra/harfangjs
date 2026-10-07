@@ -13,6 +13,8 @@ if __name__ == '__main__':
     print(f'Runtime import audit: {len(audit_runtime())} modules', flush=True)
     if not args.skip_build:
         subprocess.run([sys.executable, str(ROOT / 'tools/build.py'), '--demo', args.demo], check=True)
+    if args.demo in ('all', 'many-nodes'):
+        subprocess.run([sys.executable, str(ROOT / 'tools/validate_compression.py')], check=True)
     for name in (DEMOS if args.demo == 'all' else [args.demo]):
         subprocess.run([sys.executable, str(ROOT / 'experiments' / DEMOS[name] / 'validate.py'),
                         '--skip-build'], check=True)
