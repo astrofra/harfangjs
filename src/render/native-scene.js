@@ -2,7 +2,7 @@ import {InstancedForwardRenderer} from './instanced-forward.js';
 import {Mat4,Mat44,Vec2,Vec3,Vec4,Inverse,GetZ,ComputeAspectRatioX,ComputeOrthographicProjectionMatrix,ComputePerspectiveProjectionMatrix,FovToZoomFactor,Len} from '../core/math.js';
 import {requireCondition} from '../core/errors.js';
 import {LT_Linear,LT_Spot} from '../scene/scene.js';
-import {frameLighting,applyMaterialState} from './forward.js';
+import {frameLighting,applyMaterialState,transparentDepth} from './forward.js';
 
 // Same split construction and texel stabilization as GenerateLinearShadowMapForForwardPipeline.
 export function directionalShadowMatrices(scene,lightNode,projection,resolution) {
@@ -84,6 +84,13 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
     this.alive();requireCondition(this.program?.adapter.startsWith('pbr-scene-instanced/'),'PROGRAM_NOT_READY','Load a compiled PBR program first');
     this.collect(scene);this.fallbackTextures();
     const gl=this.gl,{view,proj,viewProjection}=scene.ComputeCurrentCameraViewState(ComputeAspectRatioX(this.canvas.width,this.canvas.height));
+    const opaque=[],transparent=[];
+    for(const batch of this.batches.values()) {
+      if(batch.transparent) {
+        batch.depth=transparentDepth(batch.submesh.bounds,view.mul(new Mat4(...batch.world)));transparent.push(batch);
+      } else opaque.push(batch);
+    }
+    transparent.sort((a,b)=>b.depth-a.depth);
     const frame=frameLighting(scene,view),lights=scene.GetLights().filter(n=>n.IsEnabled());
     const directional=lights.filter(n=>n.GetLight().GetType()===LT_Linear).sort((a,b)=>b.GetLight().GetPriority()-a.GetLight().GetPriority())[0];
     const locals=lights.filter(n=>n.GetLight().GetType()!==LT_Linear).sort((a,b)=>b.GetLight().GetPriority()-a.GetLight().GetPriority());
@@ -93,7 +100,7 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
     const spot=shadowLocals[0]?.GetLight();let spotMatrix=Mat44.Identity;
     const light=directional?.GetLight().GetShadowType()===1?directional.GetLight():undefined;
     const matrices=light?directionalShadowMatrices(scene,directional,proj,pipeline.resolution):Array(4).fill(Mat44.Identity);
-    Object.assign(this.stats,{drawCalls:0,shadowDrawCalls:0,triangles:0,shadowTriangles:0,shadowPasses:(light?4:0)+(spot?1:0),shadowAtlasSize:light?pipeline.resolution*2:0});
+    Object.assign(this.stats,{drawCalls:0,opaqueDrawCalls:0,transparentDrawCalls:0,shadowDrawCalls:0,triangles:0,shadowTriangles:0,shadowPasses:(light?4:0)+(spot?1:0),shadowAtlasSize:light?pipeline.resolution*2:0});
     if(light) {
       this.ensureShadow({resolution:pipeline.resolution*2,sixteenBit:pipeline.sixteenBit});this.stats.shadowResolution=pipeline.resolution;
       gl.bindFramebuffer(gl.FRAMEBUFFER,this.shadow.framebuffer);gl.enable(gl.SCISSOR_TEST);
@@ -103,7 +110,7 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
         gl.viewport(x,y,pipeline.resolution,pipeline.resolution);gl.scissor(x,y,pipeline.resolution,pipeline.resolution);
         gl.colorMask(false,false,false,false);gl.depthMask(true);gl.clearDepth(1);gl.clear(gl.DEPTH_BUFFER_BIT);
         gl.uniformMatrix4fv(this.depth.uniforms.viewProjection,false,matrices[i].data);
-        for(const batch of this.batches.values()) {
+        for(const batch of opaque) {
           applyMaterialState(gl,{...batch.state,write_r:false,write_g:false,write_b:false,write_a:false,write_z:true});
           this.draw(batch);++this.stats.shadowDrawCalls;this.stats.shadowTriangles+=batch.submesh.indexCount/3*batch.count;
         }
@@ -117,7 +124,7 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
       gl.bindFramebuffer(gl.FRAMEBUFFER,this.spotShadow.framebuffer);gl.viewport(0,0,pipeline.resolution,pipeline.resolution);
       gl.colorMask(false,false,false,false);gl.depthMask(true);gl.clearDepth(1);gl.clear(gl.DEPTH_BUFFER_BIT);
       gl.useProgram(this.depth.handle);gl.uniformMatrix4fv(this.depth.uniforms.viewProjection,false,spotMatrix.data);
-      for(const batch of this.batches.values()) {
+      for(const batch of opaque) {
         applyMaterialState(gl,{...batch.state,write_r:false,write_g:false,write_b:false,write_a:false,write_z:true});
         this.draw(batch);++this.stats.shadowDrawCalls;this.stats.shadowTriangles+=batch.submesh.indexCount/3*batch.count;
       }
@@ -141,7 +148,7 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
     bind(3,gl.TEXTURE_CUBE_MAP,hasEnvironment?this.texture(env.radiance_map):this.fallbackCube,'radianceMap');
     bind(4,gl.TEXTURE_2D,this.shadow?.texture??this.fallbackDepth,'linearShadowMap');
     bind(7,gl.TEXTURE_2D,this.spotShadow?.texture??this.fallbackDepth,'shadowMap');
-    for(const batch of this.batches.values()) {
+    for(const batch of [...opaque,...transparent]) {
       applyMaterialState(gl,batch.state);const material=batch.material,map=material.texture('uBaseOpacityMap');
       gl.uniform1i(u.hasBaseMap,!!map);bind(0,gl.TEXTURE_2D,map?this.texture(map):this.fallback2D,'baseMap');
       const normal=material.texture('uNormalMap'),orm=material.texture('uOcclusionRoughnessMetalnessMap');
@@ -149,6 +156,7 @@ export class NativeSceneRenderer extends InstancedForwardRenderer {
       gl.uniform1i(u.hasORMMap,!!orm);bind(6,gl.TEXTURE_2D,orm?this.texture(orm):this.fallback2D,'ormMap');
       gl.uniform4fv(u.base,material.value('uBaseOpacityColor'));gl.uniform4fv(u.surface,material.value('uOcclusionRoughnessMetalnessColor'));
       gl.uniform4fv(u.self,material.value('uSelfColor'));this.draw(batch);++this.stats.drawCalls;this.stats.triangles+=batch.submesh.indexCount/3*batch.count;
+      ++this.stats[batch.transparent?'transparentDrawCalls':'opaqueDrawCalls'];
     }
     gl.bindVertexArray(null);requireCondition(gl.getError()===gl.NO_ERROR,'GPU_RENDER_FAILED','WebGL reported a scene rendering error');
     this.stats.viewport=[this.canvas.width,this.canvas.height];

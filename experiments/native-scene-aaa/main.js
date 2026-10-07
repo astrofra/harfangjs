@@ -7,10 +7,15 @@ const parameters=new URLSearchParams(location.search),testing=parameters.has('te
 const frameLimit=testing?Number(parameters.get('frames')??12):Infinity;
 let application,completion,lastTime,smoothed=0;
 async function start() {
-  pause.disabled=restart.disabled=true;error.textContent='';status.hidden=false;status.textContent='Preparing assets…';
+  pause.disabled=restart.disabled=true;error.textContent='';status.hidden=false;status.textContent='Loading assets 0%';
   window.engineScene={state:'loading',history:[],captures:{},samples:[]};lastTime=undefined;
   try {
     application=await createNativeBrowserApplication({canvas,manifestURL:new URL('./resources_compiled/manifest.json',import.meta.url),
+      onAssetProgress(progress) {
+        window.engineScene.loadingProgress=progress;
+        const label=progress.phase==='ready'?'Assets loaded 100% - preparing scene...':`Loading assets ${progress.percent}%`;
+        if(status.textContent!==label)status.textContent=label;
+      },
       fixedDeltaNs:testing?16666667n:undefined,
       onFrame(host) {
         const now=performance.now();if(lastTime!==undefined)smoothed=smoothed?smoothed*.9+(now-lastTime)*.1:now-lastTime;lastTime=now;

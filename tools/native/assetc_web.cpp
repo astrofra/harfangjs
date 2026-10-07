@@ -72,10 +72,10 @@ static int run(const std::vector<std::string> &args) {
     const auto &arg=args[i];
     if(arg=="--help" || arg=="-h") {
       std::cout<<"assetc-web [options] <input-directory> [output-directory]\n"
-        "Reviewed default/PBR/line programs, static scenes/geometry, PNG/DDS and HDR probes.\n"
+        "Reviewed default/PBR/line programs, static scenes/geometry, PNG/JPEG/DDS and HDR probes.\n"
         "-q/-quiet -v/-verbose -progress -j/-job N -l/-log_errors_to_stderr\n"
         "--animation-stubs: preserve animation data without Web playback\n"
-        "--max-texture-size N: resize PNGs before mip generation (default: original size)\n"
+        "--max-texture-size N: resize PNG/JPEG before mip generation (default: original size)\n"
         "Fixed WebGL 2 target; unsupported options/content fail.\n"; return 0;
     } else if(arg=="-q" || arg=="-quiet") quiet=true;
     else if(arg=="-v" || arg=="-verbose") verbose=true;
@@ -122,7 +122,7 @@ static int run(const std::vector<std::string> &args) {
     check(contains(source,fs::canonical(entry.path())),"Input escapes source directory");
     if(approved.contains(name))continue;
     const auto extension=entry.path().extension().string();
-    check(scene_profile&&(extension==".scn"||extension==".geo"||extension==".png"||extension==".dds"||extension==".hdr"||extension==".meta"),"Unsupported input: "+name);
+    check(scene_profile&&(extension==".scn"||extension==".geo"||extension==".png"||extension==".jpg"||extension==".jpeg"||extension==".dds"||extension==".hdr"||extension==".meta"),"Unsupported input: "+name);
     auto data=read(entry.path());source_hashes[name]=sha256(data);inputs.emplace_back(name,std::move(data));
   }
   json program={{"schema","harfang-web-program/1"},{"adapter","default-spot-instanced/1"},
@@ -134,8 +134,8 @@ static int run(const std::vector<std::string> &args) {
   auto bytes=program.dump(2)+"\n", digest=sha256(bytes);
   compiled.add("core/shader/default.hps","program",bytes);
   if(scene_profile) {
-    json pbr={{"schema","harfang-web-program/1"},{"adapter","pbr-scene-instanced/2"},{"logicalId","core/shader/pbr.hps"},{"sourceHashes",source_hashes},
-      {"variants",{"pbr-maps-unskinned"}},{"requires",{"render.forward","render.directional-shadow","render.spot-shadow","render.environment","render.textures"}},
+    json pbr={{"schema","harfang-web-program/1"},{"adapter","pbr-scene-instanced/3"},{"logicalId","core/shader/pbr.hps"},{"sourceHashes",source_hashes},
+      {"variants",{"pbr-maps-unskinned"}},{"requires",{"render.forward","render.directional-shadow","render.spot-shadow","render.environment","render.textures","render.alpha-blend"}},
       {"forward",{{"vertex",pbr_vertex},{"fragment",pbr_fragment}}},{"depth",{{"vertex",depth_vertex},{"fragment",depth_fragment}}}};
     compiled.add("core/shader/pbr.hps","program",pbr.dump(2)+"\n");
     json line={{"schema","harfang-web-program/1"},{"adapter","pos-rgb/1"},{"logicalId","shaders/pos_rgb"},{"sourceHashes",source_hashes},

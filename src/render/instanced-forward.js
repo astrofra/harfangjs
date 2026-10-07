@@ -1,4 +1,4 @@
-import {requireCondition} from '../core/errors.js';
+import {integer,requireCondition} from '../core/errors.js';
 import {Mat44, Vec2, Inverse, ComputeAspectRatioX, ComputePerspectiveProjectionMatrix, FovToZoomFactor} from '../core/math.js';
 import {modelData, watchModel} from './models.js';
 import {frameLighting, applyMaterialState} from './forward.js';
@@ -8,7 +8,8 @@ import {profile} from '../compat/profile.js';
 // Experimental native-call renderer. Shader programs come only from assetc-web.
 // The batching key includes material values/state; scene components remain distinct.
 export class InstancedForwardRenderer {
-  constructor(canvas, {antialias = false} = {}) {
+  constructor(canvas, {antialias = false,maxGPUBytes=profile.limits.maxGPUBytes} = {}) {
+    this.maxGPUBytes=integer(maxGPUBytes,1,536870912,'GPU byte budget');
     this.canvas = canvas;
     this.gl = canvas.getContext('webgl2', {alpha:false, depth:true, antialias});
     requireCondition(this.gl, 'WEBGL2_REQUIRED', 'WebGL 2 is unavailable');
@@ -21,10 +22,10 @@ export class InstancedForwardRenderer {
       gpuBytes:0,programs:0,meshes:0,instanceBuffers:0,shaderCompileMs:0,shadowResolution:0};
   }
   alive() { requireCondition(!this.disposed && !this.gl.isContextLost(), 'RENDERER_UNAVAILABLE', 'Renderer disposed or context lost'); }
-  checkBudget(bytes) { requireCondition(this.stats.gpuBytes+bytes<=profile.limits.maxGPUBytes,'RESOURCE_BUDGET','Native forward GPU budget exceeded (128 MiB)'); }
+  checkBudget(bytes) { requireCondition(this.stats.gpuBytes+bytes<=this.maxGPUBytes,'RESOURCE_BUDGET',`Native forward GPU budget exceeded (${this.maxGPUBytes/1048576} MiB)`); }
   prepare(program) {
     this.alive();
-    requireCondition(['default-spot-instanced/1','pbr-scene-instanced/1','pbr-scene-instanced/2'].includes(program.adapter), 'UNSUPPORTED_PROGRAM', 'Unknown compiled program adapter');
+    requireCondition(['default-spot-instanced/1','pbr-scene-instanced/1','pbr-scene-instanced/2','pbr-scene-instanced/3'].includes(program.adapter), 'UNSUPPORTED_PROGRAM', 'Unknown compiled program adapter');
     if (this.program === program) return;
     requireCondition(!this.program, 'UNSUPPORTED_PROGRAM', 'This renderer supports one compiled program family');
     const start = performance.now(), made = [];
@@ -81,15 +82,17 @@ export class InstancedForwardRenderer {
     this.gl.deleteBuffer(batch.buffer); this.gl.deleteVertexArray(batch.vao);
     this.stats.gpuBytes-=batch.gpuBytes; --this.stats.instanceBuffers;
   }
-  batch(mesh, material, submeshIndex) {
-    const key = `${mesh.id}/${submeshIndex}/${material.batchKey}`;
+  batch(mesh, material, submeshIndex, instanceKey) {
+    // Transparent instances must remain separate draws to preserve depth order.
+    const key = `${mesh.id}/${submeshIndex}/${material.batchKey}/${instanceKey??''}`;
     if (this.batches.has(key)) return this.batches.get(key);
     const state = material.source;
     const pbr=this.program.adapter.startsWith('pbr-scene-instanced/');
     requireCondition(material.family===(pbr?'pbr':'default') && (pbr||!material.textures().length) && !(state.flags?.length) &&
-      (state.blend_mode??'opaque')==='opaque', 'UNSUPPORTED_MATERIAL', 'Native forward pilot supports opaque, untextured default materials');
+      (material.blendMode==='opaque'||(this.program.adapter==='pbr-scene-instanced/3'&&material.blendMode==='alpha')),
+      'UNSUPPORTED_MATERIAL', 'Expected opaque default/PBR material or alpha PBR material');
     const gl = this.gl, batch = {mesh,material,state,submesh:mesh.data.submeshes[submeshIndex],count:0,
-      matrices:new Float32Array(16*64),gpuBytes:0,buffer:gl.createBuffer(),vao:gl.createVertexArray()};
+      transparent:material.blendMode==='alpha',matrices:new Float32Array(16*(material.blendMode==='alpha'?1:64)),gpuBytes:0,buffer:gl.createBuffer(),vao:gl.createVertexArray()};
     if (!batch.buffer || !batch.vao) {
       gl.deleteBuffer(batch.buffer); gl.deleteVertexArray(batch.vao);
       requireCondition(false,'GPU_ALLOCATION_FAILED','Cannot allocate instance batch');
@@ -108,12 +111,14 @@ export class InstancedForwardRenderer {
   collect(scene) {
     for(const batch of this.batches.values()) batch.count=0;
     let instances=0;
-    for(const node of allSceneNodes(scene)) {
+    for(const [nodeIndex,node] of allSceneNodes(scene).entries()) {
       if(!node.IsEnabled()) continue;
       const object=node.GetObject(); if(!object.IsValid()) continue;
       const mesh=this.mesh(objectModel(object)), world=transformWorldData(node.GetTransform());
       mesh.data.submeshes.forEach((part,index) => {
-        const batch=this.batch(mesh,object.GetMaterial(part.material),index);
+        const material=object.GetMaterial(part.material);
+        const batch=this.batch(mesh,material,index,material.blendMode==='alpha'?nodeIndex:undefined);
+        if(batch.transparent)batch.world=world;
         if((batch.count+1)*16>batch.matrices.length) {
           const larger=new Float32Array(batch.matrices.length*2); larger.set(batch.matrices); batch.matrices=larger;
         }

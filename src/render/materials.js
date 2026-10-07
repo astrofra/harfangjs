@@ -21,6 +21,7 @@ export class Material {
   get diagnostic() { return this.#diagnostic; }
   get program() { return this.#diagnostic ? 'shaders/unlit.hps' : this.#source.program; }
   get revision() { return this.#revision; }
+  get blendMode() { return this.#source.blend_mode??'opaque'; }
   get batchKey() { return this.#batchKey ??= JSON.stringify(this.#source); }
   clone() { return new Material(this.#source, this.#pictures, {structure:this.#diagnostic,nativeUniforms:this.#nativeUniforms}); }
   get variantKey() {

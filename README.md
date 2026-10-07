@@ -24,6 +24,21 @@ directional/spot shadows. Run `python experiments/native-scene-aaa/build.py` and
 Original filenames are preserved; the experiment compiles PNG textures with a
 1024-pixel limit to stay within the current browser memory budgets.
 
+The [PBR Scene experiment](experiments/native-scene-pbr/README.md) runs the original
+`scene_pbr.js` unchanged, including its transparent sphere, PBR maps, HDR environment
+and spotlight shadow. The standalone compiler accepts its JPEG source textures;
+the runtime loads compiled RGBA8 mipmaps. Original texture dimensions use a 256 MiB
+budget configured only for this experiment. Run
+`python experiments/native-scene-pbr/build.py` and
+`python experiments/native-scene-pbr/serve.py`, then open **http://localhost:8004/**.
+
+All four native tutorial experiments display asset loading progress from 0% to
+100%, measured from downloaded payload bytes, including partial texture downloads.
+Completion includes integrity checks and decoding, followed by scene preparation.
+Restart resets progress. The browser host exposes this through the optional
+`onAssetProgress({phase, loadedBytes, totalBytes, loadedAssets, totalAssets, percent})`
+callback; native HG APIs and tutorial entries are unchanged.
+
 **Compatibility priority: HG Lua -> native HG JS -> web HG JS.** Native HG JS
 prioritizes conformity with HG Lua. This web implementation adapts on a
 best-effort basis to run native HG JS projects, with documented adaptations and
@@ -36,7 +51,7 @@ by HG Lua, Python and HG JS native. HG JS Web requires a separate, standalone
 native desktop compiler in `tools/native/` for scenes, models, textures and HDR
 probes, distributed for Windows/macOS/Linux on x86-64 and ARM64. Its CLI follows `assetc`, with fewer
 options and a fixed WebGL 2 target (no graphics-backend selection). This product
-is still pending as a complete cross-platform distribution. The three native
+is still pending as a complete cross-platform distribution. The four native
 tutorial experiments now exercise standalone program and static-scene compiler
 slices on Windows x64; see the [compiler specification](../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md).
 

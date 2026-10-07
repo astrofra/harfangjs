@@ -9,10 +9,15 @@ const fixedDeltaNs=testing?BigInt(parameters.get('dt')??'16666667'):undefined;
 let application, completion, lastTime, smoothed=0;
 window.manyNodes={state:'loading',history:[],captures:{}};
 async function start() {
-  pause.disabled=restart.disabled=true;error.textContent='';status.hidden=false;status.textContent='Preparing assets…';
+  pause.disabled=restart.disabled=true;error.textContent='';status.hidden=false;status.textContent='Loading assets 0%';
   window.manyNodes={state:'loading',history:[],captures:{}};lastTime=undefined;
   try {
     application=await createNativeBrowserApplication({canvas,manifestURL:new URL('./resources_compiled/manifest.json',import.meta.url),fixedDeltaNs,
+      onAssetProgress(progress) {
+        window.manyNodes.loadingProgress=progress;
+        const label=progress.phase==='ready'?'Assets loaded 100% - preparing scene...':`Loading assets ${progress.percent}%`;
+        if(status.textContent!==label)status.textContent=label;
+      },
       onFrame(host) {
         const now=performance.now();if(lastTime!==undefined) smoothed=smoothed?smoothed*.9+(now-lastTime)*.1:now-lastTime;lastTime=now;
         status.hidden=true;const s=host.metrics;

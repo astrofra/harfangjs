@@ -1,5 +1,5 @@
 import {InputManager} from '../core/input.js';
-import {requireCondition} from '../core/errors.js';
+import {integer,requireCondition} from '../core/errors.js';
 import {InstancedForwardRenderer} from '../render/instanced-forward.js';
 import {NativeSceneRenderer} from '../render/native-scene.js';
 import {loadProgramAssets} from './program-assets.js';
@@ -8,10 +8,12 @@ import {profile} from './profile.js';
 
 // Browser-only lifecycle. A native application's window helper may be replaced
 // by `export {runWindow} from 'harfang/browser'` without altering scene code.
-export async function createNativeBrowserApplication({canvas,manifestURL,onFrame=()=>{},beforeFrame=()=>{},fixedDeltaNs,signal,centerMouse=false}={}) {
+export async function createNativeBrowserApplication({canvas,manifestURL,onFrame=()=>{},beforeFrame=()=>{},onAssetProgress=()=>{},fixedDeltaNs,signal,centerMouse=false,
+  maxAssetBytes=profile.limits.maxGPUBytes,maxGPUBytes=profile.limits.maxGPUBytes}={}) {
   requireCondition(canvas instanceof HTMLCanvasElement,'INVALID_CANVAS','Expected a canvas');
   requireCondition(fixedDeltaNs===undefined || (typeof fixedDeltaNs==='bigint'&&fixedDeltaNs>=0n),'INVALID_ARGUMENT','Expected a nonnegative BigInt test delta');
-  const assets=await loadProgramAssets(manifestURL,signal);
+  integer(maxGPUBytes,1,536870912,'GPU byte budget');
+  const assets=await loadProgramAssets(manifestURL,signal,onAssetProgress,maxAssetBytes);
   const host={canvas,assets,scenes:new Set(),resources:new Set(),pipelines:new Set(),warnings:[],
     requestedSize:[1280,720],frames:0,state:'ready',metrics:{},closed:false,paused:false};
   const listeners=[]; let request,waiter,previous,completion;
@@ -76,7 +78,7 @@ export async function createNativeBrowserApplication({canvas,manifestURL,onFrame
     host.requestedSize=[width,height];
     canvas.setAttribute('aria-label',title);
     const Renderer=assets.manifest.profile==='web-native-scene/1'?NativeSceneRenderer:InstancedForwardRenderer;
-    host.renderer=new Renderer(canvas,{antialias:false});
+    host.renderer=new Renderer(canvas,{antialias:false,maxGPUBytes});
     host.input=new InputManager().attach(canvas);canvas.focus();resize();
     if(centerMouse)host.input.move(canvas.width/2,canvas.height/2);
     host.presentation.requestedResetFlags=resetFlags??0;

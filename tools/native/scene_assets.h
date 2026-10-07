@@ -2,6 +2,7 @@
 // CMFT is linked into assetc-web; no converter subprocess or engine DLL is used.
 #include <cmft/image.h>
 #include <cmft/cubemapfilter.h>
+#include <cmft/dependency/stb/stb_image.h>
 #include <cmath>
 #include <cstring>
 #include <map>
@@ -82,6 +83,7 @@ static json image_meta(const fs::path &source,const std::string &name) {
 static void compile_image(AssetOutputs &out,const fs::path &source,const std::string &name,const std::string &bytes,unsigned max_texture_size) {
   CompilerImage image;check(bytes.size()<=67108864,"Image input limit");
   const auto extension=fs::u8path(name).extension().string();
+  const bool ldr=extension==".png"||extension==".jpg"||extension==".jpeg";
   if(extension==".dds") {
     check(bytes.size()>=128,"Truncated DDS header");
     GeometryReader header{bytes};check(header.u32()==0x20534444&&header.u32()==124,"Invalid DDS header");
@@ -100,8 +102,13 @@ static void compile_image(AssetOutputs &out,const fs::path &source,const std::st
     check(bytes.size()>=24&&bytes.substr(0,8)==std::string("\x89PNG\r\n\x1a\n",8),"Invalid PNG header");
     const auto be32=[&](size_t i){const auto *p=reinterpret_cast<const unsigned char *>(bytes.data()+i);return (uint32_t(p[0])<<24)|(uint32_t(p[1])<<16)|(uint32_t(p[2])<<8)|p[3];};
     const auto width=be32(16),height=be32(20);check(width>0&&height>0&&width<=4096&&height<=4096&&size_t(width)*height<=4194304,"PNG dimension limit");
+  } else if(extension==".jpg"||extension==".jpeg") {
+    int width=0,height=0,channels=0;
+    check(bytes.size()>=3&&uint8_t(bytes[0])==0xff&&uint8_t(bytes[1])==0xd8&&
+      stbi_info_from_memory(reinterpret_cast<const stbi_uc *>(bytes.data()),int(bytes.size()),&width,&height,&channels),"Invalid JPEG header: "+name);
+    check(width>0&&height>0&&width<=4096&&height<=4096&&size_t(width)*height<=4194304,"JPEG dimension limit");
   }
-  check(extension==".png"?cmft::imageLoadStb(image,bytes.data(),uint32_t(bytes.size()),cmft::TextureFormat::RGBA32F):
+  check(ldr?cmft::imageLoadStb(image,bytes.data(),uint32_t(bytes.size()),cmft::TextureFormat::RGBA32F):
     cmft::imageLoad(image,bytes.data(),uint32_t(bytes.size()),cmft::TextureFormat::RGBA32F),"Cannot decode image: "+name);
   check(image.m_width<=4096&&image.m_height<=4096,"Image dimension limit");
   const auto meta=image_meta(source,name);
@@ -118,19 +125,24 @@ static void compile_image(AssetOutputs &out,const fs::path &source,const std::st
     add_image(out,name+".irradiance",irradiance,true);add_image(out,name+".radiance",radiance,true);
   } else {
     for(const auto &field:meta.items())check(((field.key()=="min-filter"||field.key()=="mag-filter")&&(field.value()=="Linear"||field.value()=="Anisotropic"))||
-      (field.key()=="compression"&&field.value()=="BC3"),"Unsupported texture metadata: "+field.key());
-    if(extension==".png") {
-      if(max_texture_size&&std::max(image.m_width,image.m_height)>max_texture_size) {
-        const float scale=float(max_texture_size)/std::max(image.m_width,image.m_height);
+      (field.key()=="compression"&&(field.value()=="BC2"||field.value()=="BC3"||field.value()=="BC5"||field.value()=="ETC1"))||
+      (ldr&&field.key()=="type"&&(field.value()=="NormalMap"||field.value()=="Standard"))||
+      (ldr&&field.key()=="max-size"&&field.value().is_number_integer()&&field.value().get<int>()>0&&field.value().get<int>()<=16384),
+      "Unsupported texture metadata: "+field.key());
+    if(ldr) {
+      const auto limit=std::min(max_texture_size?max_texture_size:16384u,meta.value("max-size",16384u));
+      if(std::max(image.m_width,image.m_height)>limit) {
+        const float scale=float(limit)/std::max(image.m_width,image.m_height);
         cmft::imageResize(image,std::max(1u,unsigned(image.m_width*scale)),std::max(1u,unsigned(image.m_height*scale)));
       }
       cmft::imageGenerateMipMapChain(image);
     }
     const bool anisotropic=meta.value("min-filter",std::string())=="Anisotropic"||meta.value("mag-filter",std::string())=="Anisotropic";
     add_image(out,name,image,extension==".dds",anisotropic);
+    if(meta.contains("type"))out.assets[name]["sourceTextureType"]=meta["type"];
     if(meta.contains("compression")) {
       out.assets[name]["sourceCompression"]=meta["compression"];
-      std::cerr<<"assetc-web: warning: "<<name<<": native BC3 target replaced by portable RGBA8.\n";
+      std::cerr<<"assetc-web: warning: "<<name<<": native "<<meta["compression"].get<std::string>()<<" target replaced by portable RGBA8.\n";
     }
   }
 }
@@ -151,10 +163,12 @@ static std::set<std::string> scene_dependencies(const json &scene,bool animation
     for(const auto &material:object.at("materials")) {
       check(material.at("program")=="core/shader/pbr.hps","Static scene profile requires the reviewed PBR family");
       deps.insert(material.at("program").get<std::string>());
-      check(material.value("blend_mode",std::string("opaque"))=="opaque","Transparent materials not supported in native scene profile");
+      const auto blend=material.value("blend_mode",std::string("opaque"));
+      check(blend=="opaque"||blend=="alpha","Native scene profile supports opaque and alpha materials");
       check(!material.contains("flags")||material["flags"].empty(),"Unsupported material variant flags");
       if(material.contains("textures"))for(const auto &texture:material["textures"]) {
         const auto sampler=texture.at("name").get<std::string>();
+        if(sampler=="uSelfMap"&&(!texture.contains("path")||texture["path"].get<std::string>().empty()))continue;
         check(sampler=="uBaseOpacityMap"||sampler=="uNormalMap"||sampler=="uOcclusionRoughnessMetalnessMap","Unsupported PBR material map: "+sampler);
         if(texture.contains("path")&&!texture["path"].get<std::string>().empty())deps.insert(texture["path"].get<std::string>());
       }

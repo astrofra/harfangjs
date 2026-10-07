@@ -67,8 +67,11 @@ The original 11-square logo remains 11-square.
 The compiler's default keeps original texture dimensions. This experiment's
 `build.py --max-texture-size N` changes its PNG limit; increasing it may exceed
 the unchanged browser asset/GPU budgets. Parallax-corrected probes, skinning,
-transparent materials and additional shadow-casting local lights remain outside
+additional blend modes beyond opaque/alpha and additional shadow-casting local lights remain outside
 this profile and fail explicitly.
+
+The later [PBR Scene experiment](../native-scene-pbr/README.md) adds sorted alpha
+blending to the shared native scene renderer; the engine fixture remains opaque.
 
 ## Native reference and validation
 
