@@ -58,19 +58,6 @@ export class Vertices {
   dispose() { this.#data = undefined; this.#written.clear(); }
 }
 
-const vertexShader = `#version 300 es
-layout(location=0) in vec3 a_position;
-layout(location=1) in vec3 a_color;
-uniform mat4 u_modelViewProj;
-out vec3 v_color;
-void main() { gl_Position = u_modelViewProj * vec4(a_position, 1.0); v_color = a_color; }
-`;
-const fragmentShader = `#version 300 es
-precision highp float;
-in vec3 v_color;
-out vec4 color;
-void main() { color = vec4(v_color, 1.0); }
-`;
 const programTokens = new WeakMap();
 class LineProgram {
   #renderer; #pool; #token;
@@ -96,15 +83,17 @@ export class LineRenderer {
   }
   #alive() {
     requireCondition(!this.#disposed, 'DISPOSED', 'Renderer is disposed');
-    requireCondition(!this.#gl.isContextLost(), 'CONTEXT_LOST', 'WebGL context lost; restart the W0 application after restoration');
+    requireCondition(!this.#gl.isContextLost(), 'CONTEXT_LOST', 'WebGL context lost; restart the application after restoration');
   }
   createLineProgram(logicalId, compiledSources) {
     this.#alive();
-    requireCondition(profile.linePrograms.includes(logicalId), 'UNSUPPORTED_PROGRAM', 'No reviewed WebGL line adapter', logicalId);
+    requireCondition(logicalId === 'shaders/pos_rgb', 'UNSUPPORTED_PROGRAM', 'No reviewed WebGL line adapter', logicalId);
+    requireCondition(typeof compiledSources?.vertex === 'string' && typeof compiledSources?.fragment === 'string',
+      'UNSUPPORTED_PROGRAM', 'Expected shader sources compiled by assetc-web', logicalId);
     const gl = this.#gl, shaders = [];
     let program;
     try {
-      for (const [type, source] of [[gl.VERTEX_SHADER, compiledSources?.vertex??vertexShader], [gl.FRAGMENT_SHADER, compiledSources?.fragment??fragmentShader]]) {
+      for (const [type, source] of [[gl.VERTEX_SHADER, compiledSources.vertex], [gl.FRAGMENT_SHADER, compiledSources.fragment]]) {
         const shader = gl.createShader(type);
         requireCondition(shader, 'GPU_ALLOCATION_FAILED', 'Cannot allocate shader', logicalId);
         shaders.push(shader); gl.shaderSource(shader, source); gl.compileShader(shader);

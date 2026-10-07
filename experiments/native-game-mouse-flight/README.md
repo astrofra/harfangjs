@@ -129,7 +129,7 @@ any channel error above 16. CPU draw submission was approximately 1.2 ms median
 in an isolated run; it is not a GPU frame-time or cross-device guarantee.
 Reports are saved in `build/experiments/native-game-mouse-flight/reports/`.
 
-Many Nodes and the existing W0/W1/W2 validation suites are also regression gates.
+The other three Web demos are also regression gates (`python tools/validate.py`).
 
 ## Remaining scope
 

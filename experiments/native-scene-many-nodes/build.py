@@ -12,8 +12,10 @@ ROOT = EXPERIMENT.parents[1]
 NATIVE = ROOT.parent / 'harfang3d'
 WORK = ROOT / 'build/experiments/native-scene-many-nodes'
 DIST = ROOT / 'dist/experiments/native-scene-many-nodes'
-sys.path.append(str(EXPERIMENT.parent))
+sys.path.append(str(ROOT / 'tools'))
 from package_assets import package_assets
+from build_compiler import build_compiler, compiler_path
+from package_runtime import package_runtime
 
 
 def digest(path):
@@ -21,15 +23,7 @@ def digest(path):
 
 
 def build(skip_compiler=False):
-    compiler_build = ROOT / 'build/assetc-web'
-    if not skip_compiler:
-        args = ['cmake', '-S', str(ROOT / 'tools/native'), '-B', str(compiler_build),
-                '-DHG_WEB_BUILD_BRIDGE=OFF', f'-DHARFANG_SOURCE={NATIVE.as_posix()}']
-        if sys.platform == 'win32':
-            args += ['-A', 'x64']
-        subprocess.run(args, check=True)
-        subprocess.run(['cmake', '--build', str(compiler_build), '--config', 'Release', '--target', 'assetc-web'], check=True)
-    compiler = compiler_build / ('Release/assetc-web.exe' if sys.platform == 'win32' else 'assetc-web')
+    compiler = compiler_path() if skip_compiler else build_compiler()
     inputs = WORK / 'asset-input'
     hashes = json.loads((ROOT / 'tools/native/adapters/source-hashes.json').read_text())
     for name in hashes:
@@ -39,7 +33,7 @@ def build(skip_compiler=False):
     assets = WORK / 'resources_compiled'
     subprocess.run([str(compiler), str(inputs), str(assets)], check=True)
     DIST.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(ROOT / 'src', DIST / 'src', dirs_exist_ok=True)
+    package_runtime(ROOT / 'src', DIST / 'src')
     package_assets(assets, DIST / 'resources_compiled')
     (DIST / 'js').mkdir(exist_ok=True)
     shutil.copyfile(NATIVE / 'tutorials/scene_many_nodes.js', DIST / 'scene_many_nodes.js')

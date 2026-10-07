@@ -1,2 +1,0 @@
-# Existing generated inventories are checked in with CRLF line endings.
-contract/*.json whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

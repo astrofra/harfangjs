@@ -1,90 +1,87 @@
-# harfangjs
+# HarfangJS
 
-HARFANG's **C/W0 foundations, W1 static scenes/assets, and W2 materials/forward lighting**, using JavaScript ES modules and WebGL 2. The browser runtime has no package dependencies or Wasm code.
+HarfangJS runs HARFANG applications **in the browser**, using JavaScript ES modules
+and WebGL 2. Its assets are prepared offline by **assetc-web**, a standalone native
+C++ compiler intended for Windows, Linux and macOS.
 
-The [native Many Nodes experiment](experiments/native-scene-many-nodes/README.md)
-now runs the original `scene_many_nodes.js` unchanged: 10,201 animated spheres,
-4096 spotlight shadows, a native-compatible public API slice and a standalone
-native program compiler. Its browser window helper and asset profile are separate
-from the W2 gallery. The shared API fixture and images are compared with native HG JS.
-
-The [Mouse Flight experiment](experiments/native-game-mouse-flight/README.md) also
-runs its native entry unchanged. It extends the same facade and native compiler
-with authored scenes, static instances, PBR base-color textures, HDR environment
-probes, four directional shadow splits, mouse input and a 2D cursor. Run
-`python experiments/native-game-mouse-flight/build.py` followed by
-`python experiments/native-game-mouse-flight/serve.py`, then open
-**http://localhost:8002/**.
-
-The [Engine Scene experiment](experiments/native-scene-aaa/README.md) ports
-`scene_aaa.lua` to a shared native/Web JS entry. Web uses forward rendering,
-explicit AAA/animation stubs, PBR normal/ORM maps, scene instances and combined
-directional/spot shadows. Run `python experiments/native-scene-aaa/build.py` and
-`python experiments/native-scene-aaa/serve.py`, then open **http://localhost:8003/**.
-Original filenames are preserved; the experiment compiles PNG textures with a
-1024-pixel limit to stay within the current browser memory budgets.
-
-The [PBR Scene experiment](experiments/native-scene-pbr/README.md) runs the original
-`scene_pbr.js` unchanged, including its transparent sphere, PBR maps, HDR environment
-and spotlight shadow. The standalone compiler accepts its JPEG source textures;
-the runtime loads compiled RGBA8 mipmaps. Original texture dimensions use a 256 MiB
-budget configured only for this experiment. Run
-`python experiments/native-scene-pbr/build.py` and
-`python experiments/native-scene-pbr/serve.py`, then open **http://localhost:8004/**.
-
-All four native tutorial experiments display asset loading progress from 0% to
-100%, measured from downloaded payload bytes, including partial texture downloads.
-Completion includes integrity checks and decoding, followed by scene preparation.
-Restart resets progress. The browser host exposes this through the optional
-`onAssetProgress({phase, loadedBytes, totalBytes, loadedAssets, totalAssets, percent})`
-callback; native HG APIs and tutorial entries are unchanged.
-
-**Compatibility priority: HG Lua -> native HG JS -> web HG JS.** Native HG JS
-prioritizes conformity with HG Lua. This web implementation adapts on a
-best-effort basis to run native HG JS projects, with documented adaptations and
-limitations. Browser restrictions do not constrain native functionality. See the
-[compatibility policy](docs/contract.md#compatibility-priorities).
-
-**Asset compiler roadmap:** the common input for all destinations is the same
-uncompiled asset tree. Existing native `assetc` produces the compiled assets shared
-by HG Lua, Python and HG JS native. HG JS Web requires a separate, standalone
-native desktop compiler in `tools/native/` for scenes, models, textures and HDR
-probes, distributed for Windows/macOS/Linux on x86-64 and ARM64. Its CLI follows `assetc`, with fewer
-options and a fixed WebGL 2 target (no graphics-backend selection). This product
-is still pending as a complete cross-platform distribution. The four native
-tutorial experiments now exercise standalone program and static-scene compiler
-slices on Windows x64; see the [compiler specification](../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md).
-
-W1 adds native JSON scene loading, hierarchy, perspective/orthographic cameras, indexed meshes and material slots, unlit PNG/JPEG materials, fixed cube/plane drawing, and an offline web asset writer. The room includes two cameras, a parented prop, negative scale, UV seams, and a disabled object. Existing line, input, lifecycle, and JS behavior examples remain available.
-
-W2 adds the historical Phong and HARFANG PBR material families, normal/ORM/emissive maps, alpha cut, blending, eight prioritized light slots, and fog. The default gallery has interactive lighting and material controls. Environment lighting uses an explicitly declared ambient approximation; shadows remain W3.
-
-Build and run the current prototype from this directory with Python 3.10 or later:
-
-```powershell
-python tools/build_native.py
-python tools/build.py
-python tools/serve.py --dist
+```text
+Source scenes, models, textures and shaders
+    -> assetc-web (native desktop tool)
+    -> compiled Web assets + manifest.json
+    -> HarfangJS (client-side loading and rendering)
 ```
 
-Open **http://127.0.0.1:8000/examples/tutorials/**. In the gallery, click the canvas: **Space** cycles the light rig, **F** toggles fog, **N** toggles the normal map, and **R** changes roughness. **Escape** stops the application. The room retains its Space camera switch. The page includes pause/resume, restart, live counters, and conformance tests.
+The deployed application needs only a static HTTP(S) server. Python is used for
+building, packaging and testing; it does not run in the browser or on the server.
+The compiler has no dependency on a separately installed HARFANG engine or reader.
+Windows x64 is exercised here; Linux/macOS and the complete architecture release
+matrix still need platform validation and distribution work.
 
-The prototype offline build needs a native HARFANG build and `assetc`; the resulting `dist/web/` needs only an HTTP(S) server. Defaults match this workspace: `../harfang3d`, `../build/python-cmake`, and `../install/assetc/assetc.exe`. `build_native.py --harfang-build PATH` links the bridge against an existing MSVC Release x64 build without changing it. Other platforms can add `tools/native` to a HARFANG CMake build containing the `engine` target. These development requirements do not define the final standalone compiler package. See [the W1 asset workflow](docs/static-assets.md) for current prototype commands and custom paths.
+## Build and run
 
-For source development, run `python tools/build_assets.py` followed by `python tools/serve.py`. The server maps `/assets-web/` to generated compiled assets. Editable fixture recipes, generated native inputs, native/web compiled assets, and the HTTP release remain separate.
+Requirements for a source build: Python 3.10+, CMake, a C++17 compiler and the
+sibling `../harfang3d` checkout (compiler dependencies and original demo assets).
 
-Validate with an installed Chrome, Edge, or Chromium:
-
-```powershell
-python -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements-dev.txt
-.venv/Scripts/python.exe tools/validate.py --native-render
+```sh
+python tools/build.py --demo many-nodes
+python tools/serve.py --demo many-nodes
 ```
 
-On Unix, use `.venv/bin/python`. `--browser PATH` selects the browser. Omit `--native-render` when native OpenGL capture is unavailable; native asset compilation and scene-state checks still run. The full run checks 66 browser cases, ten compiler cases, real input/resize/restart, resource cleanup, runtime asset boundaries, absence of Wasm, and five native C++ rendered views. Reports, startup measurements, and captures are in `build/reports/`. Browser capture uses ANGLE SwiftShader.
+Open **http://127.0.0.1:8000/**. Upload the contents of the generated demo directory
+under `dist/experiments/` to publish it. Preserve its relative paths and use HTTPS
+or localhost for browser integrity checks.
 
-The selector includes **`scene_pbr.materials`**, `material_update_value.no_shadows`, `scene_light_priority`, and `scene_many_nodes.small.no_shadows`. The earlier `scene_pbr.structure` remains a separate diagnostic case. See [materials and forward lighting](docs/forward-materials.md) for shader mappings, tutorial adaptations, and limits.
+| Demo | Build selector | Source and details |
+| --- | --- | --- |
+| Many Nodes | `many-nodes` | [10,201 moving spheres and spotlight shadows](experiments/native-scene-many-nodes/README.md) |
+| Mouse Flight | `mouse-flight` | [Authored scenes, input, instances and HDR](experiments/native-game-mouse-flight/README.md) |
+| Engine | `engine` | [PBR engine scene, normal/ORM maps and shadows](experiments/native-scene-aaa/README.md) |
+| PBR Scene | `pbr` | [PBR materials, transparency and HDR](experiments/native-scene-pbr/README.md) |
 
-Details: [acceptance evidence](docs/acceptance.md), [portable contract](docs/contract.md), [asset format and tooling](docs/static-assets.md), [binding inventory](contract/binding-inventory.json), and [56-family tutorial manifest](contract/tutorials.json).
+`--demo all` builds all four. `--skip-compiler-build` reuses the existing compiler.
+Each demo also retains its own `build.py`, `serve.py` and `validate.py`.
+The `native-` names identify the original HARFANG tutorials; these packages run
+client-side. The native JS binding itself belongs to the sibling HARFANG project.
 
-**Native HarfangJs has an executable compatibility gate.** Its external QuickJS binding uses the existing engine with Lua scene systems. Three native tutorials are ported from Lua/Squirrel: animated lines, models without a scene pipeline, and texture loading. Shared math/scene fixtures run through C++ bindings and the browser. See [native QuickJS integration](docs/native-quickjs.md) for commands and limits. The complete W1/W2 portable application facade remains pending. The separate native tutorial profiles above implement bounded shadow, environment and instance support; animation, skinning, audio and portable UI remain deferred.
+## Public modules
+
+Applications import `harfang`; browser startup imports `harfang/browser`.
+`package.json` and the demo import maps point to the same public modules:
+
+```html
+<script type="importmap">
+{"imports":{"harfang":"./src/index.js","harfang/browser":"./src/browser.js"}}
+</script>
+```
+
+`src/index.js` exposes the supported HARFANG API. `src/browser.js` exposes
+`createNativeBrowserApplication` and `runWindow`. Browser startup downloads and
+validates the compiled manifest and payloads before entering application code.
+Supported native-style asset calls then use these preloaded resources.
+
+## Repository layout
+
+- `src/`: browser API, compiled-asset loader, scene model and WebGL rendering.
+- `tools/native/`: native asset compiler, image/probe processing and shader adapters.
+- `tools/`: Python build, package and validation orchestration.
+- `experiments/`: the four working Web demos and their regression checks.
+- `build/`: generated compiler inputs, binaries, assets and validation reports.
+- `dist/`: standalone static Web packages.
+
+## Validation and scope
+
+```sh
+python -m pip install -r requirements-dev.txt
+python tools/validate.py
+```
+
+Use `--demo many-nodes` (or another selector) for one demo, and `--skip-build` to
+check existing packages. Validation runs an installed Chromium browser via
+Playwright. Optional native reference comparisons in the individual validators
+verify Web compatibility; they are not a second product or deployment path.
+
+See [asset compilation](docs/assets.md), [browser API contract and limits](docs/contract.md)
+and [validation](docs/acceptance.md). Native names and semantics are preserved
+where supported; this is not the complete HARFANG binding. Animation playback,
+skinning, physics and arbitrary shader translation remain unsupported. The Engine
+demo explicitly enables AAA/animation stubs and renders through the forward pipeline.

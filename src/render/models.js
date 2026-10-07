@@ -59,31 +59,6 @@ export class Model {
   }
 }
 
-export function decodeMesh(descriptor, buffer) {
-  requireCondition(['harfang-web-mesh/1','harfang-web-mesh/2'].includes(descriptor?.schema) && descriptor.primitive === 'triangles' && descriptor.byteOrder === 'little',
-    'INVALID_MESH', 'Unsupported mesh schema, primitive or byte order');
-  const attributes = [
-    {name: 'position', type: 'float32', components: 3, offset: 0},
-    {name: 'normal', type: 'float32', components: 3, offset: 12},
-    {name: 'uv0', type: 'float32', components: 2, offset: 24}
-  ];
-  const stride = descriptor.schema === 'harfang-web-mesh/2' ? 56 : 32;
-  if (stride === 56) attributes.push({name: 'tangent', type: 'float32', components: 3, offset: 32}, {name: 'binormal', type: 'float32', components: 3, offset: 44});
-  requireCondition(Array.isArray(descriptor.attributes) && descriptor.attributes.length === attributes.length &&
-    attributes.every((attribute, i) => Object.entries(attribute).every(([key,value]) => descriptor.attributes[i]?.[key] === value)) &&
-    descriptor.stride === stride && buffer instanceof ArrayBuffer, 'INVALID_MESH', 'Unsupported mesh layout or buffer');
-  const count = integer(descriptor.vertexCount, 3, profile.limits.maxMeshVertices, 'vertex count');
-  const indexCount = integer(descriptor.indexCount, 3, profile.limits.maxMeshIndices, 'index count');
-  const indexSize = descriptor.indexType === 'uint16' ? 2 : descriptor.indexType === 'uint32' ? 4 : 0;
-  requireCondition(indexSize && descriptor.indexOffset === count * stride && buffer.byteLength === count * stride + indexCount * indexSize,
-    'INVALID_MESH', 'Invalid mesh buffer length or alignment');
-  const view = new DataView(buffer), vertices = new Float32Array(count * stride / 4);
-  for (let i = 0; i < vertices.length; ++i) vertices[i] = view.getFloat32(i * 4, true);
-  const indices = indexSize === 2 ? new Uint16Array(indexCount) : new Uint32Array(indexCount);
-  for (let i = 0; i < indices.length; ++i) indices[i] = indexSize === 2 ? view.getUint16(count * stride + i * 2, true) : view.getUint32(count * stride + i * 4, true);
-  return new Model(vertices, indices, descriptor.submeshes, descriptor.bounds, stride / 4);
-}
-
 export function VertexLayoutPosFloatNormUInt8() { return Object.freeze({kind: 'position-normal-unorm8'}); }
 function requireLayout(layout) { requireCondition(layout?.kind === 'position-normal-unorm8', 'UNSUPPORTED_LAYOUT', 'Model tutorial requires VertexLayoutPosFloatNormUInt8'); }
 // Same rings, seam and triangle fans as engine/create_geometry.cpp.
@@ -137,7 +112,7 @@ export function CreateCubeModel(layout, width, height, depth) {
 }
 export function CreatePlaneModel(layout, width, depth, subdivisionsX = 1, subdivisionsZ = 1) {
   requireLayout(layout);
-  requireCondition(subdivisionsX === 1 && subdivisionsZ === 1, 'UNSUPPORTED_MODEL', 'W1 plane construction supports one quad');
+  requireCondition(subdivisionsX === 1 && subdivisionsZ === 1, 'UNSUPPORTED_MODEL', 'Plane construction supports one quad');
   [width, depth].forEach(n => requireCondition(finite(n) > 0, 'INVALID_ARGUMENT', 'Plane dimensions must be positive'));
   const x = width / 2, z = depth / 2;
   return new Model(new Float32Array([-x,0,-z, 0,1,0, 0,0, -x,0,z, 0,1,0, 0,1, x,0,z, 0,1,0, 1,1, x,0,-z, 0,1,0, 1,0]),

@@ -1,7 +1,14 @@
 // Native-shaped API slice, implemented by shared JS scene/math and WebGL services.
 // Unsupported overloads fail, except the explicitly warned AAA/animation stubs.
 // The native HG JS API remains the reference.
-export * from '../index.js';
+export * from '../core/errors.js';
+export * from '../core/math.js';
+export * from '../core/time.js';
+export {K_Escape, K_Space, K_Left, K_Right, K_Up, K_Down, MB_0, MB_1, MB_2} from '../core/input.js';
+export {VertexLayout, Vertices, A_Position, A_Color0, AT_Float} from '../render/lines.js';
+export {Node, Transform, Camera, ObjectComponent, Light, Instance, SceneView, LT_Linear, LT_Point, LT_Spot} from '../scene/scene.js';
+export {Model, CreateCubeModel, CreateSphereModel, CreatePlaneModel, VertexLayoutPosFloatNormUInt8} from '../render/models.js';
+export * from '../render/materials.js';
 import {Scene as BaseScene, NodeList, attachInstanceView, setTransformMatrix, setObjectModelReference, LT_Spot, LT_Linear, LT_Point} from '../scene/scene.js';
 export {NodeList};
 import {Color, Vec3, Vec4, Deg, Deg3} from '../core/math.js';
@@ -16,7 +23,7 @@ export {VertexLayoutPosFloatColorFloat,LoadProgramFromAssets,DestroyProgram,SetV
   DT_Less,DT_LessEqual,DT_Equal,DT_GreaterEqual,DT_Greater,DT_NotEqual,DT_Never,DT_Always,DT_Disabled,
   FC_Disabled,FC_Clockwise,FC_CounterClockwise,CF_Color,CF_Depth,CF_Stencil} from './lines.js';
 import {getHost,optionalHost} from './context.js';
-import {profile} from './profile.js';
+import {profile} from '../profile.js';
 import {animationMethods,validateAAAArguments,warnStub} from './stubs.js';
 export {ForwardPipelineAAAConfig,ForwardPipelineAAA,CreateForwardPipelineAAAFromAssets,DestroyForwardPipelineAAA,IsValid,
   BR_Equal,BR_Half,BR_Quarter,BR_Eighth,BR_Sixteenth,BR_Double,FPAAADB_None,FPAAADB_SSGI,FPAAADB_SSR,

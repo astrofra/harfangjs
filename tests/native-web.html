@@ -1,7 +1,0 @@
-<!doctype html><meta charset="utf-8"><title>HGJS / Web contract</title>
-<script type="importmap">{"imports":{"harfang":"../src/index.js"}}</script>
-<script type="module">
-import {runNativeWebContract} from './shared/native-web.js';
-try { window.nativeWebResult = {contract: runNativeWebContract()}; }
-catch (error) { window.nativeWebError = String(error.stack || error); }
-</script>

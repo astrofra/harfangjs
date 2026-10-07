@@ -3,7 +3,7 @@ import {Mat44, Vec2, Inverse, ComputeAspectRatioX, ComputePerspectiveProjectionM
 import {modelData, watchModel} from './models.js';
 import {frameLighting, applyMaterialState} from './forward.js';
 import {allSceneNodes,transformWorldData, objectModel, LT_Linear, LT_Spot} from '../scene/scene.js';
-import {profile} from '../compat/profile.js';
+import {profile} from '../profile.js';
 
 // Experimental native-call renderer. Shader programs come only from assetc-web.
 // The batching key includes material values/state; scene components remain distinct.

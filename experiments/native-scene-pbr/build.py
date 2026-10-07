@@ -12,8 +12,10 @@ ROOT = EXPERIMENT.parents[1]
 NATIVE = ROOT.parent / 'harfang3d'
 WORK = ROOT / 'build/experiments/native-scene-pbr'
 DIST = ROOT / 'dist/experiments/native-scene-pbr'
-sys.path.append(str(EXPERIMENT.parent))
+sys.path.append(str(ROOT / 'tools'))
 from package_assets import package_assets
+from build_compiler import build_compiler, compiler_path
+from package_runtime import package_runtime
 
 
 def digest(path):
@@ -44,15 +46,7 @@ def scene_sources(names, path):
 
 
 def build(skip_compiler=False, max_texture_size=0):
-    compiler_build = ROOT / 'build/assetc-web'
-    if not skip_compiler:
-        args = ['cmake', '-S', str(ROOT / 'tools/native'), '-B', str(compiler_build),
-                '-DHG_WEB_BUILD_BRIDGE=OFF', f'-DHARFANG_SOURCE={NATIVE.as_posix()}']
-        if sys.platform == 'win32':
-            args += ['-A', 'x64']
-        subprocess.run(args, check=True)
-        subprocess.run(['cmake', '--build', str(compiler_build), '--config', 'Release', '--target', 'assetc-web'], check=True)
-    compiler = compiler_build / ('Release/assetc-web.exe' if sys.platform == 'win32' else 'assetc-web')
+    compiler = compiler_path() if skip_compiler else build_compiler()
     names = set()
     for manifest in ['source-hashes.json', 'scene-source-hashes.json']:
         names.update(json.loads((ROOT / 'tools/native/adapters' / manifest).read_text()))
@@ -74,7 +68,7 @@ def build(skip_compiler=False, max_texture_size=0):
         subprocess.run([str(compiler), *options, str(inputs), str(assets)], check=True)
         stamp_file.write_text(json.dumps(stamp, indent=2) + '\n', encoding='utf-8')
     DIST.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(ROOT / 'src', DIST / 'src', dirs_exist_ok=True)
+    package_runtime(ROOT / 'src', DIST / 'src')
     package_assets(assets, DIST / 'resources_compiled')
     (DIST / 'js').mkdir(exist_ok=True)
     source = NATIVE / 'tutorials/scene_pbr.js'

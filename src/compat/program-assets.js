@@ -1,6 +1,6 @@
 import {integer,requireCondition} from '../core/errors.js';
 import {validateLogicalPath} from '../profile.js';
-import {profile} from './profile.js';
+import {profile} from '../profile.js';
 import {validateSceneJSON} from '../scene/schema.js';
 
 export async function loadProgramAssets(manifestURL, signal, onProgress=()=>{}, maxAssetBytes=profile.limits.maxGPUBytes) {
@@ -81,8 +81,7 @@ export async function loadProgramAssets(manifestURL, signal, onProgress=()=>{}, 
     }
     const program=JSON.parse(new TextDecoder().decode(bytes));
     if(entry.kind==='scene') {
-      validateSceneJSON(program,{source:id,lighting:true,ignoreShadows:true,ambientEnvironment:true,maxNodes:profile.limits.maxNodes,
-        instances:true,animationStubs:manifest.animationPlayback==='stub',nativeUniforms:true});
+      validateSceneJSON(program,{source:id,maxNodes:profile.limits.maxNodes,animationStubs:manifest.animationPlayback==='stub'});
       requireCondition(!program.environment?.probe?.parallax,'UNSUPPORTED_SCENE_FEATURE','Parallax-corrected probes are unavailable');
       scenes.set(id,program);return;
     }
@@ -91,7 +90,7 @@ export async function loadProgramAssets(manifestURL, signal, onProgress=()=>{}, 
       geometries.set(id,program);return;
     }
     const approved={
-      'core/shader/default.hps':['default-spot-instanced/1','untextured-unskinned',profile.capabilities],
+      'core/shader/default.hps':['default-spot-instanced/1','untextured-unskinned',['render.forward','render.spot-shadow','render.draw-instancing']],
       'core/shader/pbr.hps':program.adapter==='pbr-scene-instanced/3'?
         ['pbr-scene-instanced/3','pbr-maps-unskinned',['render.forward','render.directional-shadow','render.spot-shadow','render.environment','render.textures','render.alpha-blend']]:program.adapter==='pbr-scene-instanced/2'?
         ['pbr-scene-instanced/2','pbr-maps-unskinned',['render.forward','render.directional-shadow','render.spot-shadow','render.environment','render.textures']]:

@@ -4,7 +4,7 @@ import {InstancedForwardRenderer} from '../render/instanced-forward.js';
 import {NativeSceneRenderer} from '../render/native-scene.js';
 import {loadProgramAssets} from './program-assets.js';
 import {getHost,setHost} from './context.js';
-import {profile} from './profile.js';
+import {profile} from '../profile.js';
 
 // Browser-only lifecycle. A native application's window helper may be replaced
 // by `export {runWindow} from 'harfang/browser'` without altering scene code.

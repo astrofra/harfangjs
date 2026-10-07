@@ -1,15 +1,2 @@
-export * from './core/errors.js';
-export * from './core/math.js';
-export * from './core/time.js';
-export * from './core/input.js';
-export {ResourceManager} from './core/resources.js';
-export {createRunner} from './core/lifecycle.js';
-export {Scene, Node, Transform, Camera, ObjectComponent, Light, Instance, SceneView, LT_Linear, LT_Point, LT_Spot} from './scene/scene.js';
-export {ScriptManager} from './scene/scripts.js';
-export * from './render/lines.js';
-export {profile, requireCapabilities, validateManifest, validatePortableModule} from './profile.js';
-export {StaticAssets, LoadSceneFromAssetsAsync, LoadPictureFromAssetsAsync, LoadTextureFromAssetsAsync} from './scene/assets.js';
-export {StaticRenderer, createUnlitMaterial} from './render/static.js';
-export {Model, CreateCubeModel, CreateSphereModel, CreatePlaneModel, VertexLayoutPosFloatNormUInt8} from './render/models.js';
-export {Picture} from './render/images.js';
-export * from './render/materials.js';
+// Public HARFANG API for browser applications using assetc-web output.
+export * from './compat/harfang.js';

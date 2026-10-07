@@ -35,10 +35,9 @@ Use localhost or HTTPS for the browser's SHA-256 integrity checks.
 
 ## Native/Web public API contract
 
-`src/compat/harfang.js` is the experimental `harfang` mapping; reusable scene,
-math and model implementations remain in `src/`. `src/compat/browser.js` supplies
-asset preparation, scheduling, input and cleanup. The existing W2 gallery keeps
-its own import map and asset profile.
+`src/index.js` is the public `harfang` mapping; `src/browser.js` supplies
+asset preparation, scheduling, input and cleanup. Both delegate to the supported
+browser implementation in `src/compat/`.
 
 The implemented native call surface covers:
 
@@ -50,8 +49,7 @@ The implemented native call surface covers:
 - `Scene.Update(BigInt)` and reusable `Scene.Clear()`; copy semantics for
   transforms and per-object material copies; native numeric light constants.
 - Native `BigInt` results for `Scene.GetNodeCount` and `Object.GetMaterialCount`.
-  These also correct the shared W1/W2 runtime; internal array lengths explicitly
-  convert them to Number.
+  Internal array lengths explicitly convert them to Number.
 - `SubmitSceneToPipeline` with current camera, horizontal FOV and a full-canvas
   rectangle, returning `[nextViewId, SceneForwardPipelinePassViewId]`; pass IDs
   are read through `GetSceneForwardPipelinePassViewId`, including native sentinel
@@ -67,7 +65,7 @@ The `web-native-forward/1` profile allows 16,384 nodes, eight light slots, one
 shadow-casting local spotlight, and 128 MiB of accounted GPU buffers/textures.
 The shadow caster must occupy the first local light slot. Materials are opaque,
 untextured, unskinned `core/shader/default.hps`. Unsupported variants/shadows fail
-explicitly. W2 texture/PBR/scene loading is not yet integrated into this profile.
+explicitly. Texture/PBR/scene loading uses the companion `web-native-scene/1` content profile.
 No promise is made for other overloads or native window APIs.
 
 ## Standalone Web asset compiler
@@ -78,12 +76,13 @@ build/assetc-web/Release/assetc-web.exe build/experiments/native-scene-many-node
 
 `tools/native/assetc_web.cpp` is a native C++ executable with a static MSVC runtime
 and embedded Web shader adapters. It has no HARFANG DLL, Python, shaderc or other
-runtime tool dependency. Its source build uses the native checkout's JSON header.
+runtime tool dependency. Its source build uses the native checkout's JSON header
+and CMFT sources, also used by the scene demos for offline image/probe processing.
 The CLI accepts input/output directories, quiet/verbose/progress/logging switches,
 and a job count; omitted output defaults to `<input>_compiled`. The target is fixed
 to WebGL 2. Unsupported switches and content are errors.
 
-This is the **program compiler slice**, not the complete Web assetc product.
+This demo exercises the compiler's **program-only content profile**.
 It verifies the reviewed default shader and its includes against normalized
 source hashes, then emits versioned forward/depth GLSL ES descriptors at the
 original path `core/shader/default.hps`, with hashes in `manifest.json`.
@@ -100,8 +99,8 @@ tree, removing obsolete output. The release retains the same source filenames;
 there is no hashed `objects/` directory. Browser preloading bypasses the HTTP
 cache so restarting after a rebuild loads the new bytes at the same paths.
 
-Scenes, mesh files, textures, mipmaps, HDR probes and the Windows/macOS/Linux
-x86-64/ARM64 distribution matrix remain work under the
+The shared compiler also supports static scenes, geometry, textures, mipmaps and
+HDR probes. The Windows/macOS/Linux x86-64/ARM64 distribution matrix remains work under the
 [compiler specification](../../../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md).
 Only the Windows x64 executable has been built and tested here.
 
@@ -111,10 +110,9 @@ Install the repository's Playwright development dependency and run:
 
 ```powershell
 .venv/Scripts/python.exe experiments/native-scene-many-nodes/validate.py --native ../install/js_bullet/hgjs/hgjs.exe
-.venv/Scripts/python.exe tools/validate.py --source
 ```
 
-The first command builds the package, tests the compiler, runs the common API
+This command builds the package, tests the compiler, runs the common API
 fixture, captures the original tutorial through native HG JS/OpenGL and the
 browser, and checks lifecycle and package boundaries. `--native-assetc PATH`
 overrides `../install/assetc/assetc.exe`; `--browser PATH` selects Chromium.
@@ -135,7 +133,6 @@ Observed on 2026-10-05, Chromium 154.0.8037.97, ANGLE/D3D11, NVIDIA RTX 4060:
 | Native/browser RGB mean absolute error | 0.7524 / 255; threshold < 2 |
 | Pixels with a channel difference > 16 | 1.672%; threshold < 3% |
 | 60-frame draw CPU timings | Median 20.30 ms; P95 32.40 ms on this run |
-| Existing regression suite | 66 browser cases and 10 prototype compiler cases pass |
 
 Draw timing includes animation, scene update and WebGL submission; it is not a
 GPU timer or a frame-rate guarantee. Driver allocations and the default browser
@@ -151,7 +148,7 @@ and context loss. It forbids any WebAssembly access and audits HTTP requests.
 
 ```text
 experiments/native-scene-many-nodes/    # bootstrap, browser helper, build and tests
-src/compat/                           # experimental native-compatible API/host
+src/compat/                           # native-compatible browser API/host
 src/render/instanced-forward.js        # shared-model batching and spotlight pass
 tools/native/                         # native compiler and reviewed shader adapters
 build/experiments/native-scene-many-nodes/
@@ -163,14 +160,8 @@ build/experiments/native-scene-many-nodes/
 dist/experiments/native-scene-many-nodes/ # independent HTTP package
 ```
 
-`probe.py` is retained as a baseline audit of the original module pair against the
-W2 import map. It does not launch the implemented compatibility experiment; its
-original result is historical evidence in the
-[feasibility specification](../../../harfang3d/specifications/SPECS_HARFANGJS_WEB_NATIVE_SCENE_MANY_NODES_FEASIBILITY.md).
-
 The [Mouse Flight experiment](../native-game-mouse-flight/README.md) now extends
 the same API facade and compiler to textures, authored scenes, instances and HDR.
 The common facade returns native `NodeList` values from `GetNodes`/`GetAllNodes`
 and caches world matrices until the next scene update. Browser diagnostics use
-`nodes.get(i)` accordingly. The reduced gallery case
-`scene_many_nodes.small.no_shadows` remains separate from this full experiment.
+`nodes.get(i)` accordingly.

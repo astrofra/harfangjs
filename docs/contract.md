@@ -1,150 +1,56 @@
-# Portable foundation, scene and forward-rendering contract
+# Browser runtime contract
 
-API `harfang-js/1`, profile `web-forward/1`, asset schema `harfang-web-assets/1`. Earlier `web-foundation/1` and `web-static/1` manifests remain accepted.
-This is the C contract subset exercised by W0/W1/W2. It does not advertise the future `web-lite/1` profile. The [HarfangJs gate](native-quickjs.md) executes shared math/scene fixtures through an external QuickJS binding; remaining cross-host adapters are portability work and do not define the default native API.
+HarfangJS has one runtime target: client-side JavaScript and WebGL 2, consuming
+assets produced by the native `assetc-web` tool. Its public entry points are
+`src/index.js` (`harfang`) and `src/browser.js` (`harfang/browser`).
 
-## Compatibility priorities
+## Compatibility
 
-1. **Native HG JS prioritizes conformity with HG Lua**, including functionality
-   and engine behavior for the same build options, with JavaScript language
-   conventions where necessary.
-2. **Web HG JS adapts on a best-effort basis to run native HG JS projects.**
-   Preserve native project code and behavior where feasible, and document the
-   adapters, approximations, required project changes and unsupported features.
+The reference direction is **HG Lua -> native HG JS -> Web HG JS**. Supported
+calls retain native names, signatures, defaults and value/reference semantics.
+Browser limitations do not redefine the native binding. The facade in
+`src/compat/` adapts the shared math, scene and rendering implementations to the
+supported native-shaped calls; it is the implementation of the public Web API.
 
-The direction is **HG Lua -> native HG JS -> web HG JS**. The web profile below
-describes current browser capabilities; its limits do not restrict native APIs,
-resource handling or execution. Optional portability checks must be explicitly
-selected. Native conformity and web compatibility are validated separately;
-browser compatibility is not guaranteed for every native project. Required
-unsupported web features still fail explicitly rather than silently succeeding.
-See the [normative precedence](../../harfang3d/specifications/SPECS_HYBRID_CPP_JS_WEBGL_DELIVERY_SLICES.md#compatibility-precedence).
+Math values use float32 storage. Times and native-sized counts use `BigInt` where
+required by the API. Scene node enumeration returns `NodeList`; transform world
+matrices are updated by the scene update. Materials assigned to objects are
+copied. The demo `contract.js` fixtures exercise these semantics in the browser
+and can optionally be compared with an external native HARFANG executable.
 
-**Public API compatibility is a hard constraint for new native/Web work.** Keep
-the native names, signatures, defaults, value/reference semantics and return
-types for the supported overloads. Browser presentation concessions do not waive
-this requirement. The [Many Nodes experiment](../experiments/native-scene-many-nodes/README.md)
-uses a separate `web-native-forward/1` import map and tests one identical API
-fixture against native HG JS. The older W1/W2 adaptations documented below are
-not a claim of complete native API compatibility.
+## Application lifecycle and assets
 
-The [Mouse Flight experiment](../experiments/native-game-mouse-flight/README.md)
-extends that same facade with the `web-native-scene/1` asset profile. It exercises
-unchanged native scene/instance loading, HDR PBR rendering, directional shadows,
-mouse snapshots and 2D lines. Its contract also checks native `NodeList` returns,
-`BigInt` counts and world matrices cached until the next scene update. These
-native-shaped semantics are selected by the experiment's import map; they do not
-change the older W1/W2 array-based application contract described below.
+Browser startup calls `createNativeBrowserApplication({canvas, manifestURL, ...})`.
+It asynchronously loads the compiled manifest and payloads before running the
+shared application. `onAssetProgress` reports downloaded byte counts and reaches
+100 percent after validation/decoding. `runWindow` is the browser window helper
+used by the tutorials. Native-style asset loads operate on the preloaded data.
 
-## Source and module boundaries
+The host provides frame scheduling, input, resize, pause/resume, restart and
+cleanup. Context loss stops the application and releases resources. Keyboard
+and mouse input are scoped to the canvas, with focus-loss reset. The browser
+owns presentation; requested MSAA is currently ignored with a warning.
 
-The asset authoring boundary is the same uncompiled source tree for every
-destination. HG JS native consumes the same native compiled asset types as HG
-Lua/Python; only the Web runtime needs Web compiled outputs. The required
-[standalone native Web compiler](../../harfang3d/specifications/SPECS_HARFANG_WEB_ASSETC.md)
-runs on Windows/macOS/Linux, x86-64 and ARM64, is implemented in
-`harfangjs/tools/native/`, and has an assetc-compatible CLI and a
-fixed WebGL 2 target. Scenes, models, textures and HDR probe generation are part
-of its delivery scope. The complete compiler distribution is pending; a
-standalone Windows x64 slice now compiles both native tutorial experiments,
-including Mouse Flight's HDR probes. The W1/W2 runtime and prototype writer below
-retain their separate asset profile and do not provide that HDR environment path.
+The accepted manifest schema and two content profiles are described in
+[asset compilation](assets.md). No source-asset fallback or runtime native tool
+is supported. The runtime has no package or Wasm dependency.
 
-The source specs are in the sibling `harfang3d/specifications/` directory:
+## Rendering and limits
 
-- `SPECS_HYBRID_CPP_JS_WEBGL_DELIVERY_SLICES.md`, sections C, W0, W1 and W2.
-- `SPECS_HYBRID_CPP_JS_WEBGL_FEASIBILITY.md`, especially value semantics, scheduling and projection conventions.
-- `SPECS_HYBRID_CPP_JS_WEBGL_TUTORIAL_VALIDATION.md`.
+The current implementation includes static scenes and instances, indexed models,
+procedural models, default and PBR materials, normal/ORM/emissive maps,
+transparency, fog, HDR environments, line rendering, instancing and bounded
+directional/spot shadow support. Shader families and variants must have reviewed
+compiler adapters. Feature combinations remain bounded by the demos and their
+validators; this is not complete HARFANG API compatibility.
 
-Shared applications import `harfang`. Browser bootstrap additionally imports `harfang/browser`; it is the only module needing a DOM at initialization. Source and packaged HTML provide relative import maps. `package.json` provides matching ES-module exports for tooling. The native loader maps `harfang` to the full generated engine binding; web compatibility adapters must work from that reference. `harfang-native` and `harfang/native` are forbidden in the web portable profile; `validatePortableModule(specifier, source)` reports those imports, and the web package builder rejects unrecognized bare imports. This is dependency validation, not a sandbox for arbitrary JS code.
+The shared limits in `src/profile.js` include 16,384 nodes, hierarchy depth 128,
+eight light slots, 4096-pixel texture/drawing dimensions, 64 MiB per payload and
+a default 128 MiB asset/GPU budget. PBR Scene explicitly raises its budgets to
+256 MiB for original-resolution textures. Device limits can be tighter.
 
-Behavior modules come from a registry of logical IDs and static `import()` functions. No downloaded source evaluation, runtime module-name guessing, QuickJS bytecode, or executable asset payload is supported.
-
-`contract/binding-inventory.json` records 1,492 literal class/function/method names extracted by AST from the binding source, with original line numbers and a source hash. It distinguishes `portable`, `approximation`, `native-only`, and `unsupported`. `portable` means the overloads below, not every C++ overload of that name. Dynamic generator expressions are retained separately and marked unsupported until reviewed; constructors, properties, operators, and enum values are not expanded by the extractor. In particular, `Vec2` is generated by a templated helper and documented here. Regenerate both inventories with `python tools/inventory.py --source ../harfang3d`.
-
-## Values, math and time
-
-Math values use float32 storage. Named arithmetic methods replace operator overloading. Constructors, getters, and returned arrays copy values; operations allocate new results. Public `data` arrays belong to the math value, never directly to a scene component. `.equals()` compares values/handle identity; `===` compares JS wrappers. Finite scalar inputs are required. Default vectors are zero and default matrices identity, explicitly initializing the otherwise unspecified native default storage.
-
-| Surface | W0 support |
-| --- | --- |
-| `Vec2` | zero, scalar splat, `(x,y)`, copy; `x/y`, `.equals()` |
-| `Vec3` | zero, scalar splat, `(x,y,z)`, copy; `x/y/z`, `.add/.sub/.mul/.div` with scalar or Vec3, `.equals()`; fresh `Zero/One/Right/Up/Front` values |
-| `Vec4` | zero, scalar splat, four scalars, copy; `x/y/z/w`, `.equals()` |
-| `Color`, `ColorI` | RGB plus optional alpha; `r/g/b/a`; `Black/White/Green`; `ColorI` checks 0–255 integers |
-| Scalar/vector helpers | `Deg`, `Deg3`, `Dot`, `Len`, `Normalize`, `Cross` for Vec3 |
-| `Mat4` | identity, copy, 12 affine column-major floats; matrix/Vec3/Vec4 multiplication; `.toArray()` returns 16 floats for WebGL |
-| `Mat44` | identity, copy from Mat4/Mat44, 16 column-major floats; matrix/Vec4 multiplication |
-| Matrix helpers | `GetColumn`, `GetT/GetTranslation`, `TranslationMat4`, `ScaleMat4`, `RotationMat4`, `TransformationMat4`, `Inverse` |
-| Projection | `ComputeAspectRatioX`, `FovToZoomFactor`, perspective/orthographic projection, `ProjectToClipSpace`, `ProjectToScreenSpace` |
-
-Rotations are radians, default `RO_YXZ` (`Ry * Rx * Rz`); alternate Euler orders and quaternion APIs are not advertised. World/view math uses positive Z forward. Projection always targets WebGL homogeneous depth `[-1,1]`. Screen math has positive Y upward and preserves native clip-Z rather than returning a normalized depth-buffer value. `ProjectToScreenSpace` takes view-space positions. W1 composes parent transforms and converts authored JSON Euler degrees to radians; authored camera FOV is already radians.
-
-`Inverse(matrix)` returns `[success, inverse]`. A singular matrix yields `[false, identity]`; callers must inspect the boolean. Projection functions return `[success, Vec3]`, with a deterministic zero output when homogeneous W is nonpositive. These are multiple logical outputs in array order; `Scene.GetNodes()` is a single collection value. Matrices/world positions are compared within `1e-4` against recorded native outputs, screen pixels within `0.001`; intermediate rounding is not bit-identical.
-
-Native `time_ns` and integer time arguments use signed 64-bit `BigInt`, including negative times. `time_from_ns`, `time_from_sec`, `time_from_ms`, and the corresponding `time_to_*` helpers validate ranges. `time_to_sec_f/time_to_ms_f` return float32 Numbers. `time_from_sec_f` rounds the input to float32; the added facade helper `time_from_sec_d` accepts a Number and truncates seconds to nanoseconds. `parseTimeNs` only accepts safe JSON integers or decimal strings; unsafe numeric timestamps are rejected. JS bitwise operators are not used for 64-bit values.
-
-## Scene and resource ownership
-
-`Scene` supports programmatic `CreateNode(name)`, `GetNode(name)`, `GetNodes()`, `GetNodeCount()`, `DestroyNode(node)`, `CreateTransform(pos, rot, scale)`, `DestroyTransform(transform)`, and `.dispose()`. Names may repeat; lookup returns the first live match. Missing lookup returns an invalid, truthy wrapper. `Node` supports name and transform get/set; `Transform` supports position/rotation/scale get/set, `[pos,rot]` get/set, and composed `GetWorld()`.
-
-`GetNodeCount()` and `Object.GetMaterialCount()` return `BigInt`, matching native
-64-bit `size_t`; convert explicitly for JS array lengths. `Scene.Update(dt)` accepts
-native nanosecond `BigInt` values. `Scene.Clear()` invalidates old component/node
-handles and resets reusable scene state while retaining canvas settings; terminal
-`.dispose()` remains a Web lifecycle extension. Numeric light types follow native
-`LT_Point=0`, `LT_Spot=1`, `LT_Linear=2`; serialized asset names are decoded on load.
-
-W1 adds `Transform.GetParent/SetParent/ClearParent` with Node handles, cycle checks and a depth limit. Destroyed parent references become invalid and world computation uses the remaining valid chain. `Node.Enable/Disable/IsEnabled/IsItselfEnabled` reflect local state, matching native ordinary parent behavior: disabling a parent does not disable its children. Instances are excluded.
-
-Nodes expose `Get/SetCamera` and `Get/SetObject`. `Scene.CreateCamera()` preserves the native empty camera defaults (near .01, far 1000, FOV 40 degrees); the `(near,far,fov?)` overload defaults FOV to 45 degrees. `CreateOrthographicCamera(near,far,size=1)` supplies an orthographic component. `Camera` exposes near/far/FOV/size/orthographic getters and FOV/size setters. FOV arguments are radians. `SetCurrentCamera/GetCurrentCamera` use a camera Node; `ComputeCurrentCameraViewState(aspect)` returns `{view,proj,viewProjection}` and rejects singular camera transforms. Components are generation-checked and can be destroyed explicitly.
-
-`Scene.CreateObject(model, materials)` creates the implemented object subset; `ObjectComponent.GetModelRef/GetMaterialCount/GetMaterial/GetMaterialName/SetMaterialName` expose its assignments. Native model references and materials are adapted to JS resources and validated `Material` objects. Materials are shared mutable references; their source/value getters return copies. W2 tests material edits and texture/variant updates. The scene loader preserves material slot names and core metadata. `Scene.own(resource)` registers synchronous disposal for scene-owned resources.
-
-Get/change/set is required: mutating `transform.GetPos().x` changes only the returned value. Scene component setters also copy their inputs. Cross-scene component assignment and stale handles throw `INVALID_HANDLE`. Free-list reuse cannot revive a generation. Destroying a node does not implicitly destroy its transform, matching native `Scene::DestroyNode`; explicit transform destruction or scene disposal releases it. Behaviors detach while their node is still valid. Scene disposal invalidates all nodes/transforms and invokes every cleanup even if one callback fails.
-
-`ResourceManager({manifest, baseURL, fetch?}).acquire(logicalId, {signal?})` asynchronously returns a lease. Manifest entries have a supported kind, relative `uri`, optional supported `requires`, and declared dependency IDs. Base URLs must be HTTP(S) directories. Paths are case-sensitive logical names; absolute URLs, encoded/traversal paths, absent IDs and cyclic dependencies fail. Schema and API must match; either documented profile version is accepted. `describe(id)` returns a copied manifest entry.
-
-An acquired lease exposes `IsValid()`, `logicalId`, `byteLength`, copied `.bytes()`, UTF-8 `.text()`, and idempotent `.dispose()`. Concurrent leases share one fetch. Cancelling one waiter leaves other consumers alive; cancelling the last waiter aborts the fetch. The last released lease evicts its bytes. Failure is not cached; a later request can retry. Manager disposal aborts pending work and invalidates all leases. `stats` reports resources, handles, pending loads and resident bytes. Browser application stop cancels pending resource/module loads automatically; applications may also pass `ctx.signal` explicitly.
-
-Runtime resources come from compiled output. W1's `StaticAssets` interprets scene/image/mesh entries after byte-length/SHA-256 verification and supports transactional async loads. See [static assets](static-assets.md) for signatures, payload formats, image conventions and ownership. The byte manager's 64 MiB limit applies to resident resource bytes; unknown-length HTTP bodies can temporarily allocate during download before the final size check. Streaming decode/memory hardening is a later extension.
-
-## Application lifecycle
-
-`createBrowserApplication(app, options)` creates context services; `await runner.start()` invokes `app.init(ctx)` and starts scheduling only when it settles. Supported required capabilities are validated first. `start()` is idempotent for the same runner. Restart uses a new application/runner, as demonstrated by the tutorial launcher.
-
-States are `idle`, `initializing`, `running`, `suspended`, `stopping`, `stopped`, `failed`. Per frame: resize if needed, snapshot input, `update(ctx, dtNs)`, optional `ui(ctx)`, `render(ctx, 0)`. The first delta is zero. Subsequent variable deltas clamp to 0–100 ms. The app explicitly invokes `ctx.scripts.update(dtNs)` once from update; rendering does not advance behaviors. Fixed-step simulation is deferred.
-
-Only `init` may return a Promise. `update`, `render`, `ui`, `resize`, `suspend`, `resume`, `dispose`, and behavior callbacks must be synchronous. Promise results are observed to prevent unhandled rejections and rejected with `ASYNC_CALLBACK`; returning a Promise cannot undo code already executed by that function.
-
-`runner.stop()`/`ctx.stop()` cancels scheduling and pending managed loads immediately, aborts `ctx.signal`, then waits for init to settle before calling `dispose(ctx)` exactly once and disposing host services. If stopped before init begins, both init and application disposal are skipped, while host services are still released. No later update/render enters the disposed application. Arbitrary user async work cannot be forcibly interrupted: use the signal and do not leave init permanently pending. Errors are available through `runner.error` and `onError`; init errors also reject `start()`. Cleanup errors are retained. Optional user callbacks are not invoked after a stop request in the same frame.
-
-Hidden-document suspension resets the clock and input. Resume's first delta is zero. Blur clears held input without suspending simulation. Context loss stops with `CONTEXT_LOST` and releases resources; automatic GPU restoration is W10 work. After restoration, create a new runner. Canvas drawing-buffer dimensions follow CSS size and DPR, capped at DPR 2 and 4096 pixels per dimension (also constrained by the device viewport limit).
-
-The desktop example explicitly calls init/update/ui/render/dispose inside `main.js`. Its future `ctx.nextFrame()` only supplies timing/events/close state. The native launcher and native portable facade are not supplied by this repository; the example fails with a clear N prerequisite error on the browser implementation.
-
-## Input and scripts
-
-`ctx.input.keyboard` and `.mouse` are immutable frame snapshots. `Down/Key/Button`, `Pressed`, `Released` use the same snapshot throughout a frame. Repeat keydown does not create repeated presses. A complete press/release between frames reports both transitions. Old snapshots remain unchanged.
-
-Keyboard identifiers use DOM physical `KeyboardEvent.code` strings, including exported `K_Escape`, `K_Space` and arrow constants; these differ from native key enums. Web adaptation to native input calls remains compatibility work. Input is scoped to the focused canvas. Mouse `MB_0/1/2` mean left/right/middle, with `X/Y`, `DtX/DtY` in drawing-buffer pixels, positive Y upward. `Wheel()` sums signed steps, positive upward. Browser wheel deltas are normalized, not raw native device counts. Touch/gamepad/text composition and native raw device enumeration are not advertised.
-
-`ScriptManager(registry).attach(id, target, parameters, {signal?})` resolves a registered module, invokes synchronous `createBehavior()`, assigns parameters in insertion order with `OnSetScriptValue(name)`, then calls `OnAttach(target)`. A fresh object is required for each component. Factories own their mutable state; plain JS object parameters and values retain normal reference semantics, so applications should provide separate mutable parameter objects when needed. Lifecycle names cannot be overwritten through parameter setters.
-
-`update(dtNs)` calls `OnUpdate(target, dtNs)` in successful attachment order; attachment completion order is explicit (await sequentially when order matters). Iteration uses a snapshot, so self/other detachment is safe. `detach(handle)` invalidates the script handle and calls `OnDetach(target)` then `OnDestroy()`. Scene/node destruction triggers detachment before invalidation. Manager disposal detaches remaining components in reverse order, cancels pending module resolution and continues cleanup after exceptions. A cancelled late import cannot instantiate/attach a behavior.
-
-`getValue/setValue/call` provide the communication demonstrated by the web `scene_lua_script.js` derivative. Calls receive ordinary values/handles, preserve a returned array as one value, and fail on missing functions. This web API adapts native Lua lifecycle names (`OnAttachToNode`/`OnAttachToScene`) to one JS `OnAttach(target)` entry. It does not change native HG JS scene systems: the native binding preserves HG Lua behavior, and any cross-host adapter is optional.
-
-## Rendering and capability limits
-
-W0 maps `shaders/white` and `shaders/pos_rgb` to reviewed GLSL ES 3.00 adapters derived from the tutorial shaders. No native `.bin` is loaded and no shader is transpiled at runtime. `ctx.renderer.createLineProgram(id)` returns an explicitly disposable generation-checked program. Arbitrary program paths fail.
-
-`VertexLayout.Begin/Add/End` accepts only `A_Position,3,AT_Float` and optional `A_Color0,3,AT_Float`, in that order. These current web attribute tokens are strings and differ from native bgfx enums; accepting the native conventions remains web compatibility work. `Vertices(layout,count)` holds up to 131,072 vertices; `Clear/Begin/SetPos/SetColor0/End` fill consecutive complete pairs. Sparse/incomplete/mismatched layouts fail. `ctx.renderer.beginFrame(Color)` clears the full viewport; `drawLines(vertices, program, Mat44.Identity)` uploads one dynamic buffer and submits one draw. Depth test/write are enabled, blending/culling disabled, and lines are one pixel wide. Driver-chosen antialiasing is an explicit approximation. `renderer.stats` reports draw calls, submitted vertices, live programs and GPU buffer bytes.
-
-`StaticRenderer` extends the line renderer, and is the browser context's default renderer. `CreateCubeModel(layout,w,h,d)` and `CreatePlaneModel(layout,w,d,1,1)` accept `VertexLayoutPosFloatNormUInt8()`, preserving the native primitive positions/normals/UVs and winding. `Model` holds copied, validated fixed position/normal/UV buffers, triangle indices, submeshes and local bounds; replacement/general ModelBuilder is deferred. `drawModel(model, program, Mat4, Mat44, materials?)` implements reviewed `shaders/mdl` and `shaders/unlit.hps` adapters. `submit(scene)` clears from the scene canvas and draws enabled object nodes using its enabled current camera. There is no visibility/frustum-culling optimization yet.
-
-W1's unlit material supports one `uColor` vec4, optional stage-0 `uColorMap`, opaque output, `cw/ccw/disabled` culling, `less/leq/always/disabled` depth test, and per-channel/depth writes. Negative scale retains native winding behavior; it does not silently flip culling. Renderer counters add meshes, textures, static programs, triangles, mesh draws and static GPU bytes. Allocation errors fail explicitly; model/image disposal frees associated GPU allocations.
-
-W2 extends these materials/states, adds optional compiled tangent frames, and renders the default/PBR families through `submit(scene)`. Light components, eight-slot selection, fog, ambient lighting, material mutation, transparent sorting, and their exact API/parameter mappings are specified in [forward materials](forward-materials.md). Its two cached forward programs are reported separately from static and line programs.
-
-Shadows, environment probes, instances, animation, skinning, audio and portable UI remain deferred. Physics, navigation, video, VR, AAA and Wasm remain excluded. Unknown required capabilities produce `UNSUPPORTED_CAPABILITY` with the application or logical asset source. Required unsupported scene fields, skinning and native script components reject. Explicit `scene_pbr.structure` continues to mean opaque unlit diagnostic rendering; `scene_pbr.materials` is the separate W2 appearance gate. Public methods implement only documented overloads; the inventory does not promise native API completeness.
+Skinning, physics, audio, arbitrary shader translation and animation playback
+are unsupported. The Engine demo opts into warned AAA/animation stubs; AAA calls
+use forward rendering and animation tracks do not play. Global environment
+probes are supported; parallax-corrected probes are rejected. See each demo's
+README for its actual rendering scope and validation evidence.
